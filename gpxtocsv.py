@@ -8,6 +8,7 @@ import gpxpy.gpx
 import geopy
 from geopy.distance import distance
 import datetime
+# from builtins import None
 
 # Constants to decide frequency of data output (meters)
 MILE = 1609
@@ -17,8 +18,11 @@ QUARTER_MILE = MILE / 4
 SPLIT = 250 
 
 # Input / output files
-InputFile = '/Users/lawrence/Downloads/activity_6083628856.gpx'
-OutputFileName = '/Users/lawrence/Downloads/activity_6083628856.csv'
+Path = '/Users/lawrence/Downloads/'
+InputFile = Path + 'activity_6083628856.gpx'
+# Declare output File - don't know name yet
+OutputFile = None
+
 Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 
 # Other variables
@@ -37,10 +41,6 @@ LinesWritten = 0
 gpx_file = open('/Users/lawrence/Downloads/activity_6083628856.gpx', 'r')
 gpx = gpxpy.parse(gpx_file)
 
-# Open Output File
-OutputFile = open(OutputFileName, 'w')
-OutputFile.write(Header) 
-
 # Parse file to extract data
 for track in gpx.tracks:
     for segment in track.segments:
@@ -56,11 +56,15 @@ for track in gpx.tracks:
                 DateTime = point.time
                 SplitTime += point.time - PreviousTime
                 TotalTime = point.time - StartTime
+
             else:
                 # First time just set things up
                 StartTime = point.time
                 SplitDistance = 0
                 SplitTime = datetime.timedelta(0, 0, 0)
+                # Open output file now we know what to call it
+                OutputFile = open(Path + point.time.strftime('Track_%Y-%m-%d_%H%M.csv'), 'w')
+                OutputFile.write(Header) 
                 
             PreviousCoord = (point.latitude, point.longitude)
             PreviousTime = point.time
