@@ -19,7 +19,7 @@ SPLIT = 250
 # Input / output files
 InputFile = '/Users/lawrence/Downloads/activity_6083628856.gpx'
 OutputFileName = '/Users/lawrence/Downloads/activity_6083628856.csv'
-Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace\n'
+Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 
 # Other variables
 PointCount = 0
@@ -30,7 +30,6 @@ PreviousTime = 0
 TotalTime = 0
 StartTime = datetime.time(0, 0, 0)
 SplitDistance = 0
-SplitTime = datetime.timedelta(0, 0, 0)
 LinesWritten = 0
 
 
@@ -55,8 +54,7 @@ for track in gpx.tracks:
                 TotalDistance += IncrementalDistance
                 # Time
                 DateTime = point.time
-                IncrementalTime = point.time - PreviousTime
-                SplitTime += IncrementalTime
+                SplitTime += point.time - PreviousTime
                 TotalTime = point.time - StartTime
             else:
                 # First time just set things up
@@ -71,7 +69,7 @@ for track in gpx.tracks:
                 # Calculate minutes per mile
                 MinutesPerMile = SplitTime.seconds / 60 * MILE / SPLIT
                 # Write to csv
-                s = DateTime.strftime('%Y-%m-%d, %H:%M:%S,') + str(SplitTime) + ',%.0f,' % SplitDistance + str(TotalTime) + ',%.0f' % TotalDistance + ',%.1f' % MinutesPerMile + '\n'
+                s = DateTime.strftime('%Y-%m-%d, %H:%M:%S,') + str(SplitTime) + ',%.0f,' % SplitDistance + str(TotalTime) + ',%.0f' % TotalDistance + ',%.2f' % MinutesPerMile + ",%02d:%02d" % (int(MinutesPerMile),(MinutesPerMile % 1 * 60)) + '\n'
                 # print(s)
                 OutputFile.write(s)
                 SplitDistance -= SPLIT
