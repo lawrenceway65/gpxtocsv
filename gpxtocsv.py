@@ -21,9 +21,12 @@ SPLIT = 250
 Path = '/Users/lawrence/Downloads/'
 InputFile = Path + 'activity_6083628856.gpx'
 # Declare output File - don't know name yet
+OutputFileName = ''
 OutputFile = None
-
+# CSV header
 Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
+# Formatting for csv data output
+FormatString = '%s,%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n' 
 
 # Other variables
 PointCount = 0
@@ -63,7 +66,8 @@ for track in gpx.tracks:
                 SplitDistance = 0
                 SplitTime = datetime.timedelta(0, 0, 0)
                 # Open output file now we know what to call it
-                OutputFile = open(Path + point.time.strftime('Track_%Y-%m-%d_%H%M.csv'), 'w')
+                OutputFileName = Path + point.time.strftime('Track_%Y-%m-%d_%H%M.csv')
+                OutputFile = open(OutputFileName, 'w')
                 OutputFile.write(Header) 
                 
             PreviousCoord = (point.latitude, point.longitude)
@@ -73,14 +77,22 @@ for track in gpx.tracks:
                 # Calculate minutes per mile
                 MinutesPerMile = SplitTime.seconds / 60 * MILE / SPLIT
                 # Write to csv
-                s = DateTime.strftime('%Y-%m-%d, %H:%M:%S,') + str(SplitTime) + ',%.0f,' % SplitDistance + str(TotalTime) + ',%.0f' % TotalDistance + ',%.2f' % MinutesPerMile + ",%02d:%02d" % (int(MinutesPerMile),(MinutesPerMile % 1 * 60)) + '\n'
-                # print(s)
+                s = FormatString % (DateTime.strftime('%Y-%m-%d'),
+                                    DateTime.strftime('%H:%M:%S'), 
+                                    str(SplitTime), 
+                                    SplitDistance, 
+                                    str(TotalTime), 
+                                    TotalDistance, 
+                                    MinutesPerMile, 
+                                    int(MinutesPerMile), (MinutesPerMile % 1 * 60))
+#                print(s)
                 OutputFile.write(s)
                 SplitDistance -= SPLIT
                 SplitTime = datetime.timedelta(0, 0, 0)
                 LinesWritten += 1
 #            print('Point: ', PointCount, ' ', DateTime.strftime('%Y-%m-%d'), ', ', IncrementalTime, ', ', TotalTime, ', ' "%.1f" % IncrementalDistance, 'm, ', "%.0f" % TotalDistance, 'm' )
 
-print('Lines written: ', LinesWritten, 'Distance: ', "%.2fkm" % (TotalDistance/1000), 'Time: ', TotalTime)
+print('%d lines written to %s' % (LinesWritten, OutputFileName))
+# print('Distance: %.2fkm, Time %s' % ((TotalDistance/1000), TotalTime))
 
 OutputFile.close()
