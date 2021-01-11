@@ -14,12 +14,12 @@ MILE = 1609
 HALF_MILE = MILE / 2
 QUARTER_MILE = MILE / 4
  
-SPLIT = 100 
+SPLIT = 250 
 
 # Input / output files
 InputFile = '/Users/lawrence/Downloads/activity_6083628856.gpx'
 OutputFileName = '/Users/lawrence/Downloads/activity_6083628856.csv'
-Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance\n'
+Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace\n'
 
 # Other variables
 PointCount = 0
@@ -68,7 +68,10 @@ for track in gpx.tracks:
             PreviousTime = point.time
             
             if SplitDistance >= SPLIT:
-                s = DateTime.strftime('%Y-%m-%d, %H:%M:%S,') + str(SplitTime) + ',%.0f,' % SplitDistance + str(TotalTime) + ',%.0f' % TotalDistance + '\n'
+                # Calculate minutes per mile
+                MinutesPerMile = SplitTime.seconds / 60 * MILE / SPLIT
+                # Write to csv
+                s = DateTime.strftime('%Y-%m-%d, %H:%M:%S,') + str(SplitTime) + ',%.0f,' % SplitDistance + str(TotalTime) + ',%.0f' % TotalDistance + ',%.1f' % MinutesPerMile + '\n'
                 # print(s)
                 OutputFile.write(s)
                 SplitDistance -= SPLIT
