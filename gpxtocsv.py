@@ -8,7 +8,7 @@ import gpxpy.gpx
 import geopy
 from geopy.distance import distance
 import datetime
-# from builtins import None
+import os
 
 # Constants to decide frequency of data output (meters)
 MILE = 1609
@@ -21,8 +21,7 @@ SPLIT = 250
 Path = '/Users/lawrence/Downloads/'
 InputFile = Path + 'activity_6083628856.gpx'
 # Declare output File - don't know name yet
-OutputFileName = ''
-OutputFile = None
+TempFileName = Path + 'gpxtocsv-temp.csv'
 # CSV header
 Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 # Formatting for csv data output
@@ -41,8 +40,12 @@ LinesWritten = 0
 
 
 # Open Source File
-gpx_file = open('/Users/lawrence/Downloads/activity_6083628856.gpx', 'r')
-gpx = gpxpy.parse(gpx_file)
+GPXFile = open(InputFile, 'r')
+gpx = gpxpy.parse(GPXFile)
+
+# Open temp output file and write header
+OutputFile = open(TempFileName, 'w')
+OutputFile.write(Header) 
 
 # Parse file to extract data
 for track in gpx.tracks:
@@ -65,10 +68,6 @@ for track in gpx.tracks:
                 StartTime = point.time
                 SplitDistance = 0
                 SplitTime = datetime.timedelta(0, 0, 0)
-                # Open output file now we know what to call it
-                OutputFileName = Path + point.time.strftime('Track_%Y-%m-%d_%H%M.csv')
-                OutputFile = open(OutputFileName, 'w')
-                OutputFile.write(Header) 
                 
             PreviousCoord = (point.latitude, point.longitude)
             PreviousTime = point.time
@@ -79,18 +78,37 @@ for track in gpx.tracks:
                 # Write to csv
                 s = FormatString % (DateTime.strftime('%Y-%m-%d'),
                                     DateTime.strftime('%H:%M:%S'), 
-                                    str(SplitTime), 
+                                    SplitTime, 
                                     SplitDistance, 
-                                    str(TotalTime), 
+                                    TotalTime, 
                                     TotalDistance, 
                                     MinutesPerMile, 
                                     int(MinutesPerMile), (MinutesPerMile % 1 * 60))
 #                print(s)
                 OutputFile.write(s)
+                LinesWritten += 1
+                # Reset for next split
                 SplitDistance -= SPLIT
                 SplitTime = datetime.timedelta(0, 0, 0)
-                LinesWritten += 1
 #            print('Point: ', PointCount, ' ', DateTime.strftime('%Y-%m-%d'), ', ', IncrementalTime, ', ', TotalTime, ', ' "%.1f" % IncrementalDistance, 'm, ', "%.0f" % TotalDistance, 'm' )
+
+# Now work out what we are calling output file
+AveragePace = TotalTime.seconds / 60 * MILE / TotalDistance
+if AveragePace > 12:
+    Activity = 'Hike'
+elif AveragePace > 7:
+    Activity = 'Run'
+elif AveragePace > 2.5:
+    Activity = 'Cycle'
+else:
+    Activity = 'Unknown'
+
+OutputFileName = '%s%s_%s_%dMile.csv' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE))
+# If output file already exists delete it
+if os.path.isfile(OutputFileName):
+    os.remove(OutputFileName)
+# Rename temporary file
+os.rename(TempFileName, OutputFileName)
 
 print('%d lines written to %s' % (LinesWritten, OutputFileName))
 # print('Distance: %.2fkm, Time %s' % ((TotalDistance/1000), TotalTime))
