@@ -19,8 +19,8 @@ SPLIT = 250
 
 # Input / output files
 Path = '/Users/lawrence/Downloads/'
-InputFile = Path + 'activity_6083628856.gpx'
-# Temporary output File - don't know name yet
+InputFile = Path + 'activity_5824501437.gpx'
+# Temporary output File - don't know real name yet
 TempFileName = Path + 'gpxtocsv-temp.csv'
 # CSV header
 Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
@@ -58,7 +58,6 @@ for track in gpx.tracks:
                 SplitDistance += IncrementalDistance
                 TotalDistance += IncrementalDistance
                 # Time
-                DateTime = point.time
                 SplitTime += point.time - PreviousTime
                 TotalTime = point.time - StartTime
 
@@ -73,16 +72,16 @@ for track in gpx.tracks:
             
             if SplitDistance >= SPLIT:
                 # Calculate minutes per mile
-                MinutesPerMile = SplitTime.seconds / 60 * MILE / SPLIT
-                # Write to csv
-                s = FormatString % (DateTime.strftime('%Y-%m-%d'),
-                                    DateTime.strftime('%H:%M:%S'), 
+                Pace = SplitTime.seconds / 60 * MILE / SPLIT
+                # Write to csv. Pace output as decimal minutes and MM:SS 
+                s = FormatString % (point.time.strftime('%Y-%m-%d'),
+                                    point.time.strftime('%H:%M:%S'), 
                                     SplitTime, 
                                     SplitDistance, 
                                     TotalTime, 
                                     TotalDistance, 
-                                    MinutesPerMile, 
-                                    int(MinutesPerMile), (MinutesPerMile % 1 * 60))
+                                    Pace, 
+                                    int(Pace), (Pace % 1 * 60))
 #                print(s)
                 OutputFile.write(s)
                 LinesWritten += 1
