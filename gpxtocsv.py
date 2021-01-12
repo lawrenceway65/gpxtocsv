@@ -10,17 +10,17 @@ from geopy.distance import distance
 import datetime
 import os
 
-# Constants to decide frequency of data output (meters)
+# Constants to decide frequency of data output
 MILE = 1609
 HALF_MILE = MILE / 2
 QUARTER_MILE = MILE / 4
- 
+# A record will be output every SPLIT distance (meters) 
 SPLIT = 250 
 
 # Input / output files
 Path = '/Users/lawrence/Downloads/'
 InputFile = Path + 'activity_6083628856.gpx'
-# Declare output File - don't know name yet
+# Temporary output File - don't know name yet
 TempFileName = Path + 'gpxtocsv-temp.csv'
 # CSV header
 Header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
@@ -37,7 +37,6 @@ TotalTime = 0
 StartTime = datetime.time(0, 0, 0)
 SplitDistance = 0
 LinesWritten = 0
-
 
 # Open Source File
 GPXFile = open(InputFile, 'r')
