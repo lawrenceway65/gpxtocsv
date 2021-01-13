@@ -19,7 +19,7 @@ SPLIT = 250
 
 # Input / output files
 Path = '/Users/lawrence/Downloads/'
-InputFile = Path + 'activity_5824501437.gpx'
+InputFile = Path + 'Cycle_2020-11-15_0909_24Mile.gpx'
 # Temporary output File - don't know real name yet
 TempFileName = Path + 'gpxtocsv-temp.csv'
 # CSV header
@@ -90,6 +90,8 @@ for track in gpx.tracks:
                 SplitTime = datetime.timedelta(0, 0, 0)
 #            print('Point: ', PointCount, ' ', DateTime.strftime('%Y-%m-%d'), ', ', IncrementalTime, ', ', TotalTime, ', ' "%.1f" % IncrementalDistance, 'm, ', "%.0f" % TotalDistance, 'm' )
 
+OutputFile.close()
+
 # Now work out what we are calling output file
 AveragePace = TotalTime.seconds / 60 * MILE / TotalDistance
 if AveragePace > 12:
@@ -111,4 +113,3 @@ os.rename(TempFileName, OutputFileName)
 print('%d lines written to %s' % (LinesWritten, OutputFileName))
 # print('Distance: %.2fkm, Time %s' % ((TotalDistance/1000), TotalTime))
 
-OutputFile.close()

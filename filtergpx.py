@@ -11,6 +11,7 @@ import datetime
 import os
 
 # Constants to decide frequency of data output
+MILE = 1609
 SPLIT = 5
 
 # Input / output files
@@ -35,10 +36,10 @@ GPXFile = open(InputFile, 'r')
 InputGPX = gpxpy.parse(GPXFile)
 
 # GPX output file
-gpx = gpxpy.gpx.GPX()
+OutputGPX = gpxpy.gpx.GPX()
 # Create first track in our GPX:
 gpx_track = gpxpy.gpx.GPXTrack()
-gpx.tracks.append(gpx_track)
+OutputGPX.tracks.append(gpx_track)
 # Create first segment in our GPX track:
 gpx_segment = gpxpy.gpx.GPXTrackSegment()
 gpx_track.segments.append(gpx_segment)
@@ -69,7 +70,12 @@ for track in InputGPX.tracks:
             
             if SplitDistance >= SPLIT:
                 # Write to gpx 
-                gpx_segment.points.append(point)
+                NewPoint = gpxpy.gpx.GPXTrackPoint()
+                NewPoint.latitude = point.latitude
+                NewPoint.longitude = point.longitude
+                NewPoint.time = point.time
+                NewPoint.elevation = point.elevation
+                gpx_segment.points.append(NewPoint)
 #                print(s)
 #                OutputFile.write(s)
                 LinesWritten += 1
@@ -92,14 +98,11 @@ else:
     Activity = 'Unknown'
 
 OutputFileName = '%s%s_%s_%dMile.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE))
-# If output file already exists delete it
-if os.path.isfile(OutputFileName):
-    os.remove(OutputFileName)
-# Rename temporary file
-# os.rename(TempFileName, OutputFileName)
 
-print('Created GPX:', gpx.to_xml())
+OutputGPXFile = open(OutputFileName, 'w')
+OutputGPXFile.write(OutputGPX.to_xml())
+OutputGPXFile.close()
 
 
-print('%d lines written to %s' % (LinesWritten, OutputFileName))
+print('%s file created' % (OutputFileName))
 
