@@ -3,6 +3,12 @@ Created on 9 Jan 2021
 
 @author: lawrence
 '''
+
+# Parses gpx file and creates new file. Any points less than 5m from previous point are excluded.
+# Temperature data also excluded.
+# New gpx named meaningfull, by actvity type, date, tine and distance,
+# Creates much smaller gpx that can be uploaded to outddorsgb  
+
 import gpxpy
 import gpxpy.gpx
 import geopy
@@ -14,39 +20,35 @@ import os
 MILE = 1609
 SPLIT = 5
 
-# Input / output files
+# Input file
 Path = '/Users/lawrence/Downloads/'
-InputFile = Path + 'activity_5824501437.gpx'
-# Temporary output File - don't know real name yet
-TempFileName = Path + 'gpxtocsv-temp.gpx'
+InputFile = Path + 'activity_6032105456.gpx'
 
 # Other variables
 PointCount = 0
 PreviousCoord = (0.0,0.0)
+StartCoord = None
 IncrementalDistance = 0
 TotalDistance = 0
 PreviousTime = 0
 TotalTime = 0
 StartTime = datetime.time(0, 0, 0)
 SplitDistance = 0
-LinesWritten = 0
+PointsWritten = 0
+MaxDistance = 0
 
-# Open Source File
+# Open input File
 GPXFile = open(InputFile, 'r')
 InputGPX = gpxpy.parse(GPXFile)
 
-# GPX output file
+# GPX output
 OutputGPX = gpxpy.gpx.GPX()
-# Create first track in our GPX:
-gpx_track = gpxpy.gpx.GPXTrack()
-OutputGPX.tracks.append(gpx_track)
-# Create first segment in our GPX track:
-gpx_segment = gpxpy.gpx.GPXTrackSegment()
-gpx_track.segments.append(gpx_segment)
-
-# Open temp output file and write header
-# OutputFile = open(TempFileName, 'w')
-# OutputFile.write(Header) 
+# Create track
+GPXTrack = gpxpy.gpx.GPXTrack()
+OutputGPX.tracks.append(GPXTrack)
+# Create segment
+GPXSegment = gpxpy.gpx.GPXTrackSegment()
+GPXTrack.segments.append(GPXSegment)
 
 # Parse file to extract data
 for track in InputGPX.tracks:
@@ -59,12 +61,17 @@ for track in InputGPX.tracks:
                 IncrementalDistance = distance (CurrentCoord, PreviousCoord).m
                 SplitDistance += IncrementalDistance
                 TotalDistance += IncrementalDistance
+                # Straight line distance from start point
+                Distance = distance (StartCoord, CurrentCoord).m
+                if Distance > MaxDistance:
+                    MaxDistance = Distance
                 TotalTime = point.time - StartTime
 
             else:
                 # First time just set things up
                 SplitDistance = 0
                 StartTime = point.time
+                StartCoord = (point.latitude, point.longitude)
                 
             PreviousCoord = (point.latitude, point.longitude)
             
@@ -75,10 +82,10 @@ for track in InputGPX.tracks:
                 NewPoint.longitude = point.longitude
                 NewPoint.time = point.time
                 NewPoint.elevation = point.elevation
-                gpx_segment.points.append(NewPoint)
+                GPXSegment.points.append(NewPoint)
 #                print(s)
 #                OutputFile.write(s)
-                LinesWritten += 1
+                PointsWritten += 1
                 # Reset for next split
                 SplitDistance = 0
 
@@ -97,12 +104,13 @@ elif AveragePace > 2.5:
 else:
     Activity = 'Unknown'
 
+# Write track to file
 OutputFileName = '%s%s_%s_%dMile.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE))
-
 OutputGPXFile = open(OutputFileName, 'w')
 OutputGPXFile.write(OutputGPX.to_xml())
 OutputGPXFile.close()
 
-
-print('%s file created' % (OutputFileName))
+#Metadata
+print('Distance travelled: %dm, max distance from start: %dm' % (TotalDistance, MaxDistance))
+print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
 
