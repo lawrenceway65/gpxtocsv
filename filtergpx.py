@@ -122,7 +122,7 @@ def ParseGPX( InputFile ):
 if os.name == 'nt':
     Path = "C:\\Users\\Lawrence\\Downloads\\"
 else:
-    Path = "Users/Lawrence/Downloads"
+    Path = "/Users/lawrence/Documents/GPX/Raw/"
 
 
 # Iterate over every gpx file in dir
