@@ -23,8 +23,8 @@ SPLIT = 5
 
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
-    
-    
+
+
     # Variables
     PointCount = 0
     PreviousCoord = (0.0,0.0)
@@ -37,11 +37,11 @@ def ParseGPX( InputFile ):
     SplitDistance = 0
     PointsWritten = 0
     MaxDistance = 0
-    
+
     # Open input File
     GPXFile = open(InputFile, 'r')
     InputGPX = gpxpy.parse(GPXFile)
-    
+
     # GPX output
     OutputGPX = gpxpy.gpx.GPX()
     # Create track
@@ -50,7 +50,7 @@ def ParseGPX( InputFile ):
     # Create segment
     GPXSegment = gpxpy.gpx.GPXTrackSegment()
     GPXTrack.segments.append(GPXSegment)
-    
+
     # Parse file to extract data
     for track in InputGPX.tracks:
         for segment in track.segments:
@@ -68,15 +68,15 @@ def ParseGPX( InputFile ):
                         MaxDistance = Distance
                     # Time    
                     TotalTime = point.time - StartTime
-    
+
                 else:
                     # First time just set things up
                     SplitDistance = 0
                     StartTime = point.time
                     StartCoord = (point.latitude, point.longitude)
-                    
+
                 PreviousCoord = (point.latitude, point.longitude)
-                
+
                 if SplitDistance >= SPLIT:
                     # Write to gpx 
                     NewPoint = gpxpy.gpx.GPXTrackPoint()
@@ -90,9 +90,9 @@ def ParseGPX( InputFile ):
                     PointsWritten += 1
                     # Reset for next split
                     SplitDistance = 0
-    
+
                 EndTime = point.time
-                
+
 
     # Now work out what we are calling output file
     AveragePace = TotalTime.seconds / 60 * MILE / TotalDistance
@@ -110,22 +110,30 @@ def ParseGPX( InputFile ):
     OutputGPXFile = open(OutputFileName, 'w')
     OutputGPXFile.write(OutputGPX.to_xml())
     OutputGPXFile.close()
-    
+
     #Metadata
     print('Distance travelled: %dm, max distance from start: %dm' % (TotalDistance, MaxDistance))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
-    
-    return    
+
+    return
 # End of ParseGPX
 
 
 # Input dir
-Path = '/Users/lawrence/Documents/GPX/Raw/'
+
+Path = "C:\\Users\\Lawrence\\Downloads\\"
+# Path = "Users/Lawrence/Downloads"
+
+
 # Iterate over every gpx file in dir
+FilesProcessed = 0
 for entry in os.scandir(Path):
     if (entry.path.endswith(".gpx")):
-        print(entry.path)
-        ParseGPX(entry.path) 
+        print('Processing: %s' % entry.path)
+        ParseGPX(entry.path)
+        FilesProcessed += 1
+
+print('%d files processed' % FilesProcessed)
 
 
 
