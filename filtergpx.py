@@ -21,11 +21,11 @@ MILE = 1609
 SPLIT = 5
 
 
-
+# Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
     
     
-    # Other variables
+    # Variables
     PointCount = 0
     PreviousCoord = (0.0,0.0)
     StartCoord = None
@@ -116,6 +116,7 @@ def ParseGPX( InputFile ):
     print('Distance travelled: %dm, max distance from start: %dm' % (TotalDistance, MaxDistance))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
     
+    return    
 # End of ParseGPX
 
 
