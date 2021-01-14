@@ -93,8 +93,7 @@ def ParseGPX( InputFile ):
     
                 EndTime = point.time
                 
-    # OutputFile.close()
-    
+
     # Now work out what we are calling output file
     AveragePace = TotalTime.seconds / 60 * MILE / TotalDistance
     if AveragePace > 12:
