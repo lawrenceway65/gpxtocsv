@@ -6,7 +6,7 @@ Created on 9 Jan 2021
 
 # Parses gpx file and creates new file. Any points less than 5m from previous point are excluded.
 # Temperature data also excluded.
-# New gpx named meaningfull, by actvity type, date, tine and distance,
+# New gpx named meaningfully, by activity type, date, tine and distance,
 # Creates much smaller gpx that can be uploaded to outddorsgb  
 
 import gpxpy
@@ -35,9 +35,19 @@ def GetActvityType(Distance, Time):
 
     return Activity
 
+# Add new point (equals passed point)
+def AddGPSPoint(GPXSegment, point):
+    NewPoint = gpxpy.gpx.GPXTrackPoint()
+    NewPoint.latitude = point.latitude
+    NewPoint.longitude = point.longitude
+    NewPoint.time = point.time
+    NewPoint.elevation = point.elevation
+    GPXSegment.points.append(NewPoint)
+
+    return
+
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
-
 
     # Variables
     PointCount = 0
@@ -92,15 +102,8 @@ def ParseGPX( InputFile ):
                 PreviousCoord = (point.latitude, point.longitude)
 
                 if SplitDistance >= SPLIT:
-                    # Write to gpx 
-                    NewPoint = gpxpy.gpx.GPXTrackPoint()
-                    NewPoint.latitude = point.latitude
-                    NewPoint.longitude = point.longitude
-                    NewPoint.time = point.time
-                    NewPoint.elevation = point.elevation
-                    GPXSegment.points.append(NewPoint)
-    #                print(s)
-    #                OutputFile.write(s)
+                    # Add to track
+                    AddGPSPoint(GPXSegment, point)
                     PointsWritten += 1
                     # Reset for next split
                     SplitDistance = 0
