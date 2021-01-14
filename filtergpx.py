@@ -20,7 +20,6 @@ import os
 MILE = 1609
 SPLIT = 5
 
-
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
 
@@ -119,10 +118,11 @@ def ParseGPX( InputFile ):
 # End of ParseGPX
 
 
-# Input dir
-
-Path = "C:\\Users\\Lawrence\\Downloads\\"
-# Path = "Users/Lawrence/Downloads"
+# Input dir - os dependent
+if os.name == 'nt':
+    Path = "C:\\Users\\Lawrence\\Downloads\\"
+else:
+    Path = "Users/Lawrence/Downloads"
 
 
 # Iterate over every gpx file in dir
