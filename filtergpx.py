@@ -20,6 +20,21 @@ import os
 MILE = 1609
 SPLIT = 5
 
+# Works out activity from avaerage pace (min/mile)
+# Distance in meters, time in seconds
+def GetActvityType(Distance, Time):
+    AveragePace = Time / 60 * MILE / Distance
+    if AveragePace > 12:
+        Activity = 'Hike'
+    elif AveragePace > 7:
+        Activity = 'Run'
+    elif AveragePace > 2.5:
+        Activity = 'Cycle'
+    else:
+        Activity = 'Unknown'
+
+    return Activity
+
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
 
@@ -62,7 +77,7 @@ def ParseGPX( InputFile ):
                     SplitDistance += IncrementalDistance
                     TotalDistance += IncrementalDistance
                     # Straight line distance from start point
-                    Distance = distance (StartCoord, CurrentCoord).m
+                    Distance = distance(StartCoord, CurrentCoord).m
                     if Distance > MaxDistance:
                         MaxDistance = Distance
                     # Time    
@@ -94,15 +109,7 @@ def ParseGPX( InputFile ):
 
 
     # Now work out what we are calling output file
-    AveragePace = TotalTime.seconds / 60 * MILE / TotalDistance
-    if AveragePace > 12:
-        Activity = 'Hike'
-    elif AveragePace > 7:
-        Activity = 'Run'
-    elif AveragePace > 2.5:
-        Activity = 'Cycle'
-    else:
-        Activity = 'Unknown'
+    Activity = GetActvityType(TotalDistance, TotalTime.seconds)
 
     # Write track to file - output directory
     OutputFileName = '%sOutput/%s_%s_%dMile.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE))
