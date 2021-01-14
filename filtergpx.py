@@ -104,8 +104,8 @@ def ParseGPX( InputFile ):
         Activity = 'Cycle'
     else:
         Activity = 'Unknown'
-    
-    # Write track to file
+
+    # Write track to file - output directory
     OutputFileName = '%sOutput/%s_%s_%dMile.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE))
     OutputGPXFile = open(OutputFileName, 'w')
     OutputGPXFile.write(OutputGPX.to_xml())
