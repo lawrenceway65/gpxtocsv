@@ -13,6 +13,7 @@ import gpxpy
 import gpxpy.gpx
 import geopy
 from geopy.distance import distance
+from geopy.geocoders import Nominatim
 import datetime
 import os
 
@@ -112,8 +113,12 @@ def ParseGPX( InputFile ):
 
 
     # Now work out what we are calling output file
-    Activity = GetActvityType(TotalDistance, TotalTime.seconds)
+    # locator = Nominatim(user_agent='myGeocoder')
+    # location = locator.reverse(StartCoord).city
+    # print('Location %s' % location)
 
+
+    Activity = GetActvityType(TotalDistance, TotalTime.seconds)
     # Write track to file - output directory
     OutputFileName = '%sOutput/%s_%s_%dMile.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE))
     OutputGPXFile = open(OutputFileName, 'w')
