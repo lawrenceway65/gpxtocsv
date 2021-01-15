@@ -16,6 +16,8 @@ from geopy.distance import distance
 from geopy.geocoders import Nominatim
 import datetime
 import os
+import subprocess
+import json
 
 # Constants to decide frequency of data output
 MILE = 1609
@@ -46,6 +48,21 @@ def AddGPSPoint(GPXSegment, point):
     GPXSegment.points.append(NewPoint)
 
     return
+
+# Gets town/city from lat/long
+# Uses openstreetmap api
+# Uses first item in display name - should be generic
+def GetTown(point):
+    Command = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=10&format=json" % (point.latitude, point.longitude)
+    RawResult = subprocess.check_output(['curl', Command])
+    Result = RawResult.decode("utf-8")
+    ResultJSON = json.loads(Result)
+    DisplayName = ResultJSON['display_name']
+    pos = DisplayName.find(',')
+    print(DisplayName[:pos])
+
+    return
+
 
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
@@ -99,6 +116,7 @@ def ParseGPX( InputFile ):
                     SplitDistance = 0
                     StartTime = point.time
                     StartCoord = (point.latitude, point.longitude)
+                    GetTown(point)
 
                 PreviousCoord = (point.latitude, point.longitude)
 

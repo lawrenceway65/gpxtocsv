@@ -19,7 +19,7 @@ SPLIT = 250
 
 # Input / output files
 Path = '/Users/lawrence/Downloads/'
-InputFile = Path + 'Cycle_2020-11-15_0909_24Mile.gpx'
+InputFile = Path + 'activity_6061903291.gpx'
 # Temporary output File - don't know real name yet
 TempFileName = Path + 'gpxtocsv-temp.csv'
 # CSV header
