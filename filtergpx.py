@@ -19,9 +19,13 @@ import os
 import subprocess
 import json
 
-# Constants to decide frequency of data output
+# Constants and definitions
+# Meters in a mile
 MILE = 1609
 SPLIT = 5
+# Only write points farther apart than this (meters)
+MINPOINTSEPARATION = 5
+
 # Format string for OpenStreetMap request, zoom level = suburb
 OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
 
@@ -70,6 +74,21 @@ def GetTown(Latitude, Longitude):
 
     return DisplayName[:DisplayName.find(',')]
 
+# Get location string for file name
+def GetLocation(StartCoord, EndCoord, FarthestCoord):
+    # Start/end - remove any spaces, don't want them in filename
+    StartTown = GetTown(StartCoord[0], StartCoord[1]).replace(' ', '')
+    EndTown = GetTown(EndCoord[0], EndCoord[1]).replace(' ', '')
+    FarthestTown = GetTown(FarthestCoord[0], FarthestCoord[1]).replace(' ', '')
+    #    print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
+    # Might have been circular, in which case use farthest, avoid repetition if all the same
+    if StartTown == EndTown:
+        if EndTown == FarthestTown:
+            return StartTown
+        else:
+            return StartTown + FarthestTown
+    else:
+        return StartTown + EndTown
 
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
@@ -108,7 +127,7 @@ def ParseGPX( InputFile ):
                 if PointCount > 1:
                     # Position and incremental distance
                     CurrentCoord = (point.latitude, point.longitude)
-                    IncrementalDistance = distance (CurrentCoord, PreviousCoord).m
+                    IncrementalDistance = distance(CurrentCoord, PreviousCoord).m
                     SplitDistance += IncrementalDistance
                     TotalDistance += IncrementalDistance
                     # Straight line distance from start point
@@ -127,7 +146,7 @@ def ParseGPX( InputFile ):
 
                 PreviousCoord = (point.latitude, point.longitude)
 
-                if SplitDistance >= SPLIT:
+                if SplitDistance >= MINPOINTSEPARATION:
                     # Add to track
                     AddGPSPoint(GPXSegment, point)
                     PointsWritten += 1
@@ -137,23 +156,12 @@ def ParseGPX( InputFile ):
                 EndTime = point.time
 
 
-    # Now work out what we are calling output file
-    # Start/end - remove any spaces
-    StartTown = GetTown(StartCoord[0], StartCoord[1]).replace(' ','')
-    EndTown = GetTown(PreviousCoord[0],PreviousCoord[1]).replace(' ','')
-    FarthestTown = GetTown(FarthestCoord[0],FarthestCoord[1]).replace(' ','')
-#    print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
-    # Might have been circular, in which case use farthest, avoid repetition if all the same
-    if StartTown == EndTown:
-        if EndTown == FarthestTown:
-            EndTown = ''
-        else:
-            EndTown = FarthestTown
-
-    # Activity Type
-    Activity = GetActvityType(TotalDistance, TotalTime.seconds)
     # Write track to file - output directory
-    OutputFileName = '%sOutput/%s_%s_%dMile_%s%s.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE), StartTown, EndTown)
+    OutputFileName = '%sOutput/%s_%s_%dMile_%s.gpx' % (Path,
+                                                       GetActvityType(TotalDistance, TotalTime.seconds),
+                                                       StartTime.strftime('%Y-%m-%d_%H%M'),
+                                                       (TotalDistance / MILE),
+                                                       GetLocation(StartCoord, PreviousCoord, FarthestCoord))
     OutputGPXFile = open(OutputFileName, 'w')
     OutputGPXFile.write(OutputGPX.to_xml())
     OutputGPXFile.close()
