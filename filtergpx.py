@@ -26,6 +26,13 @@ SPLIT = 5
 OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
 
 
+# Input dir - os dependent
+def GetPath():
+    if os.name == 'nt':
+        return "C:\\Users\\Lawrence\\Downloads\\"
+    else:
+        return "/Users/lawrence/Documents/GPX/Raw/"
+
 # Works out activity from avaerage pace (min/mile)
 # Distance in meters, time in seconds
 def GetActvityType(Distance, Time):
@@ -149,7 +156,7 @@ def ParseGPX( InputFile ):
     OutputGPXFile.close()
 
     #Metadata
-    print('Distance travelled: %dm, max distance from start: %dm' % (TotalDistance, MaxDistance))
+#    print('Distance travelled: %dm, max distance from start: %dm' % (TotalDistance, MaxDistance))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
 
     return
@@ -165,7 +172,7 @@ else:
 
 # Iterate over every gpx file in dir
 FilesProcessed = 0
-for entry in os.scandir(Path):
+for entry in os.scandir(GetPath()):
     if (entry.path.endswith(".gpx")):
         print('Processing: %s' % entry.path)
         ParseGPX(entry.path)
