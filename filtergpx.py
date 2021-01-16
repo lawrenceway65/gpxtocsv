@@ -22,8 +22,8 @@ import json
 # Constants to decide frequency of data output
 MILE = 1609
 SPLIT = 5
-# Format string for OpenStreetMap request
-OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=10&format=json"
+# Format string for OpenStreetMap request, zoom level = suburb
+OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
 
 
 # Works out activity from avaerage pace (min/mile)
@@ -55,13 +55,13 @@ def AddGPSPoint(GPXSegment, point):
 # Gets town/city from lat/long
 # Uses Open Street Map api
 # Uses first item in display name - should be generic
-def GetTown(point):
-    Result = subprocess.check_output(['curl', OSMRequest % (point.latitude, point.longitude)]).decode("utf-8")
+def GetTown(Latitude, Longitude):
+    Result = subprocess.check_output(['curl', OSMRequest % (Latitude, Longitude)]).decode("utf-8")
+#    print(OSMRequest % (Latitude, Longitude))
     ResultJSON = json.loads(Result)
     DisplayName = ResultJSON['display_name']
-    print(DisplayName[:DisplayName.find(',')])
 
-    return
+    return DisplayName[:DisplayName.find(',')]
 
 
 # Function does nearly all the work - processes a single file
@@ -108,6 +108,7 @@ def ParseGPX( InputFile ):
                     Distance = distance(StartCoord, CurrentCoord).m
                     if Distance > MaxDistance:
                         MaxDistance = Distance
+                        FarthestCoord = CurrentCoord
                     # Time    
                     TotalTime = point.time - StartTime
 
@@ -116,7 +117,6 @@ def ParseGPX( InputFile ):
                     SplitDistance = 0
                     StartTime = point.time
                     StartCoord = (point.latitude, point.longitude)
-                    GetTown(point)
 
                 PreviousCoord = (point.latitude, point.longitude)
 
@@ -131,14 +131,19 @@ def ParseGPX( InputFile ):
 
 
     # Now work out what we are calling output file
-    # locator = Nominatim(user_agent='myGeocoder')
-    # location = locator.reverse(StartCoord).city
-    # print('Location %s' % location)
+    # Start/end - remove any spaces
+    StartTown = GetTown(StartCoord[0], StartCoord[1]).replace(' ','')
+    EndTown = GetTown(PreviousCoord[0],PreviousCoord[1]).replace(' ','')
+    FarthestTown = GetTown(FarthestCoord[0],FarthestCoord[1]).replace(' ','')
+#    print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
+    # Might have been circular, in which case use farthest
+    if StartTown == EndTown:
+        EndTown = FarthestTown
 
-
+    # Activity Type
     Activity = GetActvityType(TotalDistance, TotalTime.seconds)
     # Write track to file - output directory
-    OutputFileName = '%sOutput/%s_%s_%dMile.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE))
+    OutputFileName = '%sOutput/%s_%s_%dMile_%s%s.gpx' % (Path, Activity, StartTime.strftime('%Y-%m-%d_%H%M'), (TotalDistance / MILE), StartTown, EndTown)
     OutputGPXFile = open(OutputFileName, 'w')
     OutputGPXFile.write(OutputGPX.to_xml())
     OutputGPXFile.close()
