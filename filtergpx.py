@@ -13,8 +13,8 @@ import gpxpy
 import gpxpy.gpx
 import geopy
 from geopy.distance import distance
-from geopy.geocoders import Nominatim
 import datetime
+from datetime import datetime
 import os
 import subprocess
 import json
@@ -29,6 +29,7 @@ MINPOINTSEPARATION = 5
 # Format string for OpenStreetMap request, zoom level = suburb
 OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
 
+# MetaDataCSV = None
 
 # Input dir - os dependent
 def GetPath():
@@ -37,7 +38,7 @@ def GetPath():
     else:
         return "/Users/lawrence/Documents/GPX/Raw/"
 
-# Works out activity from avaerage pace (min/mile)
+# Works out activity from average pace (min/mile)
 # Distance in meters, time in seconds
 def GetActvityType(Distance, Time):
     AveragePace = Time / 60 * MILE / Distance
@@ -80,7 +81,7 @@ def GetLocation(StartCoord, EndCoord, FarthestCoord):
     StartTown = GetTown(StartCoord[0], StartCoord[1]).replace(' ', '')
     EndTown = GetTown(EndCoord[0], EndCoord[1]).replace(' ', '')
     FarthestTown = GetTown(FarthestCoord[0], FarthestCoord[1]).replace(' ', '')
-    #    print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
+    # print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
     # Might have been circular, in which case use farthest, avoid repetition if all the same
     if StartTown == EndTown:
         if EndTown == FarthestTown:
@@ -89,6 +90,14 @@ def GetLocation(StartCoord, EndCoord, FarthestCoord):
             return StartTown + FarthestTown
     else:
         return StartTown + EndTown
+
+# Open metadata csv file and write header
+def OpenMetaDataCSV():
+    # Filename ProcessGPX_YY-MM-DD_HHMM.csv
+    MetaDataCSV = open('%sOutput/ProcessGPX_%s.csv' % (GetPath(), datetime.now().strftime("%d-%m-%Y_%H%M")), 'w')
+    MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
+
+    return MetaDataCSV
 
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
@@ -101,7 +110,7 @@ def ParseGPX( InputFile ):
     TotalDistance = 0
     PreviousTime = 0
     TotalTime = 0
-    StartTime = datetime.time(0, 0, 0)
+    StartTime = None
     SplitDistance = 0
     PointsWritten = 0
     MaxDistance = 0
@@ -157,7 +166,7 @@ def ParseGPX( InputFile ):
 
 
     # Write track to file - output directory
-    OutputFileName = '%sOutput/%s_%s_%dMile_%s.gpx' % (Path,
+    OutputFileName = '%sOutput/%s_%s_%dMile_%s.gpx' % (GetPath(),
                                                        GetActvityType(TotalDistance, TotalTime.seconds),
                                                        StartTime.strftime('%Y-%m-%d_%H%M'),
                                                        (TotalDistance / MILE),
@@ -167,19 +176,18 @@ def ParseGPX( InputFile ):
     OutputGPXFile.close()
 
     #Metadata
-#    print('Distance travelled: %dm, max distance from start: %dm' % (TotalDistance, MaxDistance))
+    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s' % (StartTime.strftime('%Y-%m-%d'),StartTime.strftime('%H:%m'),
+                                                GetActvityType(TotalDistance, TotalTime.seconds),
+                                                InputFile,
+                      TotalDistance,
+                      TotalTime,
+                      GetTown(StartCoord[0],StartCoord[1])))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
 
     return
 # End of ParseGPX
 
-
-# Input dir - os dependent
-if os.name == 'nt':
-    Path = "C:\\Users\\Lawrence\\Downloads\\"
-else:
-    Path = "/Users/lawrence/Documents/GPX/Raw/"
-
+MetaDataCSV = OpenMetaDataCSV()
 
 # Iterate over every gpx file in dir
 FilesProcessed = 0
@@ -189,6 +197,7 @@ for entry in os.scandir(GetPath()):
         ParseGPX(entry.path)
         FilesProcessed += 1
 
+MetaDataCSV.close()
 print('%d files processed' % FilesProcessed)
 
 
