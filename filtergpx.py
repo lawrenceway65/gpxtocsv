@@ -22,6 +22,9 @@ import json
 # Constants to decide frequency of data output
 MILE = 1609
 SPLIT = 5
+# Format string for OpenStreetMap request
+OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=10&format=json"
+
 
 # Works out activity from avaerage pace (min/mile)
 # Distance in meters, time in seconds
@@ -50,16 +53,13 @@ def AddGPSPoint(GPXSegment, point):
     return
 
 # Gets town/city from lat/long
-# Uses openstreetmap api
+# Uses Open Street Map api
 # Uses first item in display name - should be generic
 def GetTown(point):
-    Command = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=10&format=json" % (point.latitude, point.longitude)
-    RawResult = subprocess.check_output(['curl', Command])
-    Result = RawResult.decode("utf-8")
+    Result = subprocess.check_output(['curl', OSMRequest % (point.latitude, point.longitude)]).decode("utf-8")
     ResultJSON = json.loads(Result)
     DisplayName = ResultJSON['display_name']
-    pos = DisplayName.find(',')
-    print(DisplayName[:pos])
+    print(DisplayName[:DisplayName.find(',')])
 
     return
 
