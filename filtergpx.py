@@ -143,9 +143,12 @@ def ParseGPX( InputFile ):
     EndTown = GetTown(PreviousCoord[0],PreviousCoord[1]).replace(' ','')
     FarthestTown = GetTown(FarthestCoord[0],FarthestCoord[1]).replace(' ','')
 #    print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
-    # Might have been circular, in which case use farthest
+    # Might have been circular, in which case use farthest, avoid repetition if all the same
     if StartTown == EndTown:
-        EndTown = FarthestTown
+        if EndTown == FarthestTown:
+            EndTown = ''
+        else:
+            EndTown = FarthestTown
 
     # Activity Type
     Activity = GetActvityType(TotalDistance, TotalTime.seconds)
