@@ -247,7 +247,6 @@ def ParseGPX( InputFile ):
                       GetTown(StartCoord[0],StartCoord[1])))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
 
-
     return
 # End of ParseGPX
 
