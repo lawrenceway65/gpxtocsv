@@ -175,9 +175,7 @@ def ParseGPX( InputFile ):
     OutputGPXFile.write(OutputGPX.to_xml())
     OutputGPXFile.close()
 
-    #Metadata
-    print(InputFile)
-    print(InputFile[len(GetPath()):-4])
+    # Write metadata to csv
     MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'),StartTime.strftime('%H:%m'),
                                                 GetActvityType(TotalDistance, TotalTime.seconds),
                                                 InputFile[len(GetPath()):-4],
