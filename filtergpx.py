@@ -176,9 +176,11 @@ def ParseGPX( InputFile ):
     OutputGPXFile.close()
 
     #Metadata
-    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s' % (StartTime.strftime('%Y-%m-%d'),StartTime.strftime('%H:%m'),
+    print(InputFile)
+    print(InputFile[len(GetPath()):-4])
+    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'),StartTime.strftime('%H:%m'),
                                                 GetActvityType(TotalDistance, TotalTime.seconds),
-                                                InputFile,
+                                                InputFile[len(GetPath()):-4],
                       TotalDistance,
                       TotalTime,
                       GetTown(StartCoord[0],StartCoord[1])))
