@@ -15,10 +15,10 @@ import geopy
 from geopy.distance import distance
 # import datetime
 from datetime import datetime, timedelta
-# from datetime import timedelta
 import os
 import subprocess
 import json
+import shutil
 
 # Constants and definitions
 # Meters in a mile
@@ -30,14 +30,32 @@ MINPOINTSEPARATION = 5
 # Format string for OpenStreetMap request, zoom level = suburb
 OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
 
-# MetaDataCSV = None
-
 # Input dir - os dependent
-def GetPath():
+def GetInputPath():
     if os.name == 'nt':
         return "C:\\Users\\Lawrence\\Downloads\\"
     else:
         return "/Users/lawrence/Documents/GPX/Raw/"
+
+# Output dir of format <activity>/<year>
+# Creates folders if they don't exist
+def GetOutputPath(Activity, Year):
+    if os.name == 'nt':
+        Path = "C:\\Users\\Lawrence\\Documents\\GPX\\"
+        Separator = '\\'
+    else:
+        Path = "/Users/lawrence/Documents/GPX/"
+        Separator = '/'
+
+    # Just create these if they don't exist
+    if not os.path.isdir(Path + Activity):
+        os.mkdir(Path + Activity)
+
+    FullPath = Path + Activity + Separator + Year + Separator
+    if not os.path.isdir(FullPath):
+        os.mkdir(FullPath)
+
+    return FullPath
 
 # Works out activity from average pace (min/mile)
 # Distance in meters, time in seconds
@@ -95,7 +113,7 @@ def GetLocation(StartCoord, EndCoord, FarthestCoord):
 # Open metadata csv file and write header
 def OpenMetaDataCSV():
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
-    MetaDataCSV = open('%sOutput/ProcessGPX_%s.csv' % (GetPath(), datetime.now().strftime("%d-%m-%Y_%H%M")), 'w')
+    MetaDataCSV = open('%sOutput/ProcessGPX_%s.csv' % (GetInputPath(), datetime.now().strftime("%d-%m-%Y_%H%M")), 'w')
     MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
     return MetaDataCSV
@@ -117,7 +135,8 @@ def SetUpGPX():
 def GetCSVFormat():
     return '%s,%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
-# Function does nearly all the work - processes a single file
+# Function does nearly all the work - processes a single gpx file
+# Generates filtered gpx, split csv and add row of metadata
 def ParseGPX( InputFile ):
 
     # Variables
@@ -203,8 +222,9 @@ def ParseGPX( InputFile ):
 
 
     # Filename for gpx and split csv - output directory
-    OutputFileName = '%sOutput/%s_%s_%dMile_%s' % (GetPath(),
-                                                       GetActvityType(TotalDistance, TotalTime.seconds),
+    Activity = GetActvityType(TotalDistance, TotalTime.seconds)
+    OutputFileName = '%s%s_%s_%dMile_%s' % (GetOutputPath(Activity, StartTime.strftime('%Y')),
+                                                       Activity,
                                                        StartTime.strftime('%Y-%m-%d_%H%M'),
                                                        (TotalDistance / MILE),
                                                        GetLocation(StartCoord, PreviousCoord, FarthestCoord))
@@ -220,8 +240,8 @@ def ParseGPX( InputFile ):
 
     # Write metadata to csv
     MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'),StartTime.strftime('%H:%m'),
-                                                GetActvityType(TotalDistance, TotalTime.seconds),
-                                                InputFile[len(GetPath()):-4],
+                                                Activity,
+                                                InputFile[len(GetInputPath()):-4],
                       TotalDistance,
                       TotalTime,
                       GetTown(StartCoord[0],StartCoord[1])))
@@ -235,11 +255,18 @@ MetaDataCSV = OpenMetaDataCSV()
 
 # Iterate over every gpx file in dir
 FilesProcessed = 0
-for entry in os.scandir(GetPath()):
+for entry in os.scandir(GetInputPath()):
     if (entry.path.endswith(".gpx")):
         print('Processing: %s' % entry.path)
         ParseGPX(entry.path)
+
+        # Move file
+        #
+        # if os.path.isfile(entry.path + '/Processed'):
+        #     os.remove(OutputFileName)
+
         FilesProcessed += 1
+
 
 MetaDataCSV.close()
 print('%d files processed' % FilesProcessed)
