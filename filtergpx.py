@@ -13,8 +13,9 @@ import gpxpy
 import gpxpy.gpx
 import geopy
 from geopy.distance import distance
-import datetime
-from datetime import datetime
+# import datetime
+from datetime import datetime, timedelta
+# from datetime import timedelta
 import os
 import subprocess
 import json
@@ -22,7 +23,7 @@ import json
 # Constants and definitions
 # Meters in a mile
 MILE = 1609
-SPLIT = 5
+SPLIT = 250
 # Only write points farther apart than this (meters)
 MINPOINTSEPARATION = 5
 
@@ -54,13 +55,13 @@ def GetActvityType(Distance, Time):
     return Activity
 
 # Add new point (equals passed point)
-def AddGPSPoint(GPXSegment, point):
+def AddGPSPoint(GPXTrack, point):
     NewPoint = gpxpy.gpx.GPXTrackPoint()
     NewPoint.latitude = point.latitude
     NewPoint.longitude = point.longitude
     NewPoint.time = point.time
     NewPoint.elevation = point.elevation
-    GPXSegment.points.append(NewPoint)
+    GPXTrack.tracks[0].segments[0].points.append(NewPoint)
 
     return
 
@@ -99,6 +100,23 @@ def OpenMetaDataCSV():
 
     return MetaDataCSV
 
+# Setup GPX - always one track and one segment
+def SetUpGPX():
+    # GPX output
+    OutputGPX = gpxpy.gpx.GPX()
+    # Create track
+    GPXTrack = gpxpy.gpx.GPXTrack()
+    OutputGPX.tracks.append(GPXTrack)
+    # Create segment
+    GPXSegment = gpxpy.gpx.GPXTrackSegment()
+    GPXTrack.segments.append(GPXSegment)
+
+    return OutputGPX
+
+# Format string for writung split to csv
+def GetCSVFormat():
+    return '%s,%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
+
 # Function does nearly all the work - processes a single file
 def ParseGPX( InputFile ):
 
@@ -110,23 +128,19 @@ def ParseGPX( InputFile ):
     TotalDistance = 0
     PreviousTime = 0
     TotalTime = 0
+#    SplitTime = 0
     StartTime = None
     SplitDistance = 0
     PointsWritten = 0
     MaxDistance = 0
+    SplitCSV = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 
     # Open input File
     GPXFile = open(InputFile, 'r')
     InputGPX = gpxpy.parse(GPXFile)
 
     # GPX output
-    OutputGPX = gpxpy.gpx.GPX()
-    # Create track
-    GPXTrack = gpxpy.gpx.GPXTrack()
-    OutputGPX.tracks.append(GPXTrack)
-    # Create segment
-    GPXSegment = gpxpy.gpx.GPXTrackSegment()
-    GPXTrack.segments.append(GPXSegment)
+    OutputGPX = SetUpGPX()
 
     # Parse file to extract data
     for track in InputGPX.tracks:
@@ -139,6 +153,7 @@ def ParseGPX( InputFile ):
                     IncrementalDistance = distance(CurrentCoord, PreviousCoord).m
                     SplitDistance += IncrementalDistance
                     TotalDistance += IncrementalDistance
+                    Separation += IncrementalDistance
                     # Straight line distance from start point
                     Distance = distance(StartCoord, CurrentCoord).m
                     if Distance > MaxDistance:
@@ -146,33 +161,61 @@ def ParseGPX( InputFile ):
                         FarthestCoord = CurrentCoord
                     # Time    
                     TotalTime = point.time - StartTime
+                    SplitTime += point.time - PreviousTime
 
                 else:
                     # First time just set things up
+                    Separation = 0
                     SplitDistance = 0
                     StartTime = point.time
                     StartCoord = (point.latitude, point.longitude)
+                    SplitTime = timedelta(0, 0, 0)
 
                 PreviousCoord = (point.latitude, point.longitude)
+                PreviousTime = point.time
 
-                if SplitDistance >= MINPOINTSEPARATION:
+                if Separation >= MINPOINTSEPARATION:
                     # Add to track
-                    AddGPSPoint(GPXSegment, point)
+                    AddGPSPoint(OutputGPX, point)
                     PointsWritten += 1
                     # Reset for next split
-                    SplitDistance = 0
+                    Separation = 0
+
+                if SplitDistance > SPLIT:
+                    # Write split record to csv
+                    # Calculate minutes per mile
+                    Pace = SplitTime.seconds / 60 * MILE / SPLIT
+                    # Add to csv. Pace output as decimal minutes and MM:SS
+                    SplitCSV += GetCSVFormat() % (point.time.strftime('%Y-%m-%d'),
+                                        point.time.strftime('%H:%M:%S'),
+                                        SplitTime,
+                                        SplitDistance,
+                                        TotalTime,
+                                        TotalDistance,
+                                        Pace,
+                                        int(Pace), (Pace % 1 * 60))
+                    # Reset for next split - don't set distance to 0 to avoid cumulative errors
+                    SplitDistance -= SPLIT
+                    SplitTime = timedelta(0, 0, 0)
+                    PreviousTime = point.time
 
                 EndTime = point.time
 
 
-    # Write track to file - output directory
-    OutputFileName = '%sOutput/%s_%s_%dMile_%s.gpx' % (GetPath(),
+    # Filename for gpx and split csv - output directory
+    OutputFileName = '%sOutput/%s_%s_%dMile_%s' % (GetPath(),
                                                        GetActvityType(TotalDistance, TotalTime.seconds),
                                                        StartTime.strftime('%Y-%m-%d_%H%M'),
                                                        (TotalDistance / MILE),
                                                        GetLocation(StartCoord, PreviousCoord, FarthestCoord))
-    OutputGPXFile = open(OutputFileName, 'w')
+    # Write gpx track
+    OutputGPXFile = open(OutputFileName + '.gpx', 'w')
     OutputGPXFile.write(OutputGPX.to_xml())
+    OutputGPXFile.close()
+
+    # Write split csv data
+    OutputGPXFile = open(OutputFileName + '.csv', 'w')
+    OutputGPXFile.write(SplitCSV)
     OutputGPXFile.close()
 
     # Write metadata to csv
@@ -183,6 +226,7 @@ def ParseGPX( InputFile ):
                       TotalTime,
                       GetTown(StartCoord[0],StartCoord[1])))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
+
 
     return
 # End of ParseGPX
