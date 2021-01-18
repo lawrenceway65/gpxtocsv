@@ -30,69 +30,77 @@ MINPOINTSEPARATION = 5
 # Format string for OpenStreetMap request, zoom level = suburb
 OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
 
-# Input dir - os dependent
+
 def GetInputPath():
+    """Return path for input data."""
     if os.name == 'nt':
         return "C:\\Users\\Lawrence\\Downloads\\"
     else:
         return "/Users/lawrence/Documents/GPX/Raw/"
 
-# Output dir of format <activity>/<year>
-# Creates folders if they don't exist
-def GetOutputPath(Activity, Year):
+
+def GetOutputPath(activity, year):
+    """
+    Get path for output files.
+    Creates any folders that don't already exist.
+    """
     if os.name == 'nt':
-        Path = "C:\\Users\\Lawrence\\Documents\\GPX\\"
-        Separator = '\\'
+        path = "C:\\Users\\Lawrence\\Documents\\GPX\\"
+        separator = '\\'
     else:
-        Path = "/Users/lawrence/Documents/GPX/"
-        Separator = '/'
+        path = "/Users/lawrence/Documents/GPX/"
+        separator = '/'
 
     # Just create these if they don't exist
-    if not os.path.isdir(Path + Activity):
-        os.mkdir(Path + Activity)
+    if not os.path.isdir(path + activity):
+        os.mkdir(path + activity)
 
-    FullPath = Path + Activity + Separator + Year + Separator
-    if not os.path.isdir(FullPath):
-        os.mkdir(FullPath)
+    full_path = path + activity + separator + year + separator
+    if not os.path.isdir(full_path):
+        os.mkdir(full_path)
 
-    return FullPath
+    return full_path
 
-# Works out activity from average pace (min/mile)
-# Distance in meters, time in seconds
-def GetActvityType(Distance, Time):
-    AveragePace = Time / 60 * MILE / Distance
-    if AveragePace > 12:
-        Activity = 'Hike'
-    elif AveragePace > 7:
-        Activity = 'Run'
-    elif AveragePace > 2.5:
-        Activity = 'Cycle'
+
+def GetActvityType(distance, time):
+    """Calculate pace (min/mile) and return matching activity.
+    """
+    pace = time / 60 * MILE / distance
+    if pace > 12:
+        activity = 'Hike'
+    elif pace > 7:
+        activity = 'Run'
+    elif pace > 2.5:
+        activity = 'Cycle'
     else:
-        Activity = 'Unknown'
+        activity = 'Unknown'
 
-    return Activity
+    return activity
 
-# Add new point (equals passed point)
-def AddGPSPoint(GPXTrack, point):
-    NewPoint = gpxpy.gpx.GPXTrackPoint()
-    NewPoint.latitude = point.latitude
-    NewPoint.longitude = point.longitude
-    NewPoint.time = point.time
-    NewPoint.elevation = point.elevation
-    GPXTrack.tracks[0].segments[0].points.append(NewPoint)
+
+def AddGPSPoint(gpx_track, point):
+    """Create new point and add to track."""
+    new_point = gpxpy.gpx.GPXTrackPoint()
+    new_point.latitude = point.latitude
+    new_point.longitude = point.longitude
+    new_point.time = point.time
+    new_point.elevation = point.elevation
+    gpx_track.tracks[0].segments[0].points.append(new_point)
 
     return
+
 
 # Gets town/city from lat/long
 # Uses Open Street Map api
 # Uses first item in display name - should be generic
 def GetTown(Latitude, Longitude):
     Result = subprocess.check_output(['curl', OSMRequest % (Latitude, Longitude)]).decode("utf-8")
-#    print(OSMRequest % (Latitude, Longitude))
+    #    print(OSMRequest % (Latitude, Longitude))
     ResultJSON = json.loads(Result)
     DisplayName = ResultJSON['display_name']
 
     return DisplayName[:DisplayName.find(',')]
+
 
 # Get location string for file name
 def GetLocation(StartCoord, EndCoord, FarthestCoord):
@@ -110,6 +118,7 @@ def GetLocation(StartCoord, EndCoord, FarthestCoord):
     else:
         return StartTown + EndTown
 
+
 # Open metadata csv file and write header
 def OpenMetaDataCSV():
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
@@ -117,6 +126,7 @@ def OpenMetaDataCSV():
     MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
     return MetaDataCSV
+
 
 # Setup GPX - always one track and one segment
 def SetUpGPX():
@@ -131,23 +141,24 @@ def SetUpGPX():
 
     return OutputGPX
 
+
 # Format string for writung split to csv
 def GetCSVFormat():
     return '%s,%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
+
 # Function does nearly all the work - processes a single gpx file
 # Generates filtered gpx, split csv and add row of metadata
-def ParseGPX( InputFile ):
-
+def ParseGPX(InputFile):
     # Variables
     PointCount = 0
-    PreviousCoord = (0.0,0.0)
+    PreviousCoord = (0.0, 0.0)
     StartCoord = None
     IncrementalDistance = 0
     TotalDistance = 0
     PreviousTime = 0
     TotalTime = 0
-#    SplitTime = 0
+    #    SplitTime = 0
     StartTime = None
     SplitDistance = 0
     PointsWritten = 0
@@ -206,13 +217,13 @@ def ParseGPX( InputFile ):
                     Pace = SplitTime.seconds / 60 * MILE / SPLIT
                     # Add to csv. Pace output as decimal minutes and MM:SS
                     SplitCSV += GetCSVFormat() % (point.time.strftime('%Y-%m-%d'),
-                                        point.time.strftime('%H:%M:%S'),
-                                        SplitTime,
-                                        SplitDistance,
-                                        TotalTime,
-                                        TotalDistance,
-                                        Pace,
-                                        int(Pace), (Pace % 1 * 60))
+                                                  point.time.strftime('%H:%M:%S'),
+                                                  SplitTime,
+                                                  SplitDistance,
+                                                  TotalTime,
+                                                  TotalDistance,
+                                                  Pace,
+                                                  int(Pace), (Pace % 1 * 60))
                     # Reset for next split - don't set distance to 0 to avoid cumulative errors
                     SplitDistance -= SPLIT
                     SplitTime = timedelta(0, 0, 0)
@@ -220,14 +231,13 @@ def ParseGPX( InputFile ):
 
                 EndTime = point.time
 
-
     # Filename for gpx and split csv - output directory
     Activity = GetActvityType(TotalDistance, TotalTime.seconds)
     OutputFileName = '%s%s_%s_%dMile_%s' % (GetOutputPath(Activity, StartTime.strftime('%Y')),
-                                                       Activity,
-                                                       StartTime.strftime('%Y-%m-%d_%H%M'),
-                                                       (TotalDistance / MILE),
-                                                       GetLocation(StartCoord, PreviousCoord, FarthestCoord))
+                                            Activity,
+                                            StartTime.strftime('%Y-%m-%d_%H%M'),
+                                            (TotalDistance / MILE),
+                                            GetLocation(StartCoord, PreviousCoord, FarthestCoord))
     # Write gpx track
     OutputGPXFile = open(OutputFileName + '.gpx', 'w')
     OutputGPXFile.write(OutputGPX.to_xml())
@@ -240,15 +250,17 @@ def ParseGPX( InputFile ):
         OutputGPXFile.close()
 
     # Write metadata to csv
-    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'),StartTime.strftime('%H:%m'),
-                                                Activity,
-                                                InputFile[len(GetInputPath()):-4],
-                      TotalDistance,
-                      TotalTime,
-                      GetTown(StartCoord[0],StartCoord[1])))
+    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'), StartTime.strftime('%H:%m'),
+                                                  Activity,
+                                                  InputFile[len(GetInputPath()):-4],
+                                                  TotalDistance,
+                                                  TotalTime,
+                                                  GetTown(StartCoord[0], StartCoord[1])))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
 
     return
+
+
 # End of ParseGPX
 
 MetaDataCSV = OpenMetaDataCSV()
@@ -267,11 +279,5 @@ for entry in os.scandir(GetInputPath()):
 
         FilesProcessed += 1
 
-
 MetaDataCSV.close()
 print('%d files processed' % FilesProcessed)
-
-
-
-
-
