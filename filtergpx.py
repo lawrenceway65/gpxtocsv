@@ -27,8 +27,6 @@ SPLIT = 250
 # Only write points farther apart than this (meters)
 MINPOINTSEPARATION = 5
 
-# Format string for OpenStreetMap request, zoom level = suburb
-OSMRequest = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
 
 
 def GetInputPath():
@@ -90,33 +88,34 @@ def AddGPSPoint(gpx_track, point):
     return
 
 
-# Gets town/city from lat/long
-# Uses Open Street Map api
-# Uses first item in display name - should be generic
-def GetTown(Latitude, Longitude):
-    Result = subprocess.check_output(['curl', OSMRequest % (Latitude, Longitude)]).decode("utf-8")
+def GetTown(latitude, longitude):
+    """Get location from co-ordinates. Use Open Street Map."""
+    # Format string for OpenStreetMap request, zoom level 14 = suburb
+    osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
+    result = subprocess.check_output(['curl', osm_request % (latitude, longitude)]).decode("utf-8")
     #    print(OSMRequest % (Latitude, Longitude))
-    ResultJSON = json.loads(Result)
-    DisplayName = ResultJSON['display_name']
+    result_json = json.loads(result)
+    town = result_json['display_name']
 
-    return DisplayName[:DisplayName.find(',')]
+    # Return first item in display name
+    return town[:town.find(',')]
 
 
-# Get location string for file name
-def GetLocation(StartCoord, EndCoord, FarthestCoord):
+def GetLocation(start_coord, end_coord, farthest_coord):
+    """Get location string for filename"""
     # Start/end - remove any spaces, don't want them in filename
-    StartTown = GetTown(StartCoord[0], StartCoord[1]).replace(' ', '')
-    EndTown = GetTown(EndCoord[0], EndCoord[1]).replace(' ', '')
-    FarthestTown = GetTown(FarthestCoord[0], FarthestCoord[1]).replace(' ', '')
+    start_town = GetTown(start_coord[0], start_coord[1]).replace(' ', '')
+    end_town = GetTown(end_coord[0], end_coord[1]).replace(' ', '')
+    farthest_town = GetTown(farthest_coord[0], farthest_coord[1]).replace(' ', '')
     # print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
     # Might have been circular, in which case use farthest, avoid repetition if all the same
-    if StartTown == EndTown:
-        if EndTown == FarthestTown:
-            return StartTown
+    if start_town == end_town:
+        if end_town == farthest_town:
+            return start_town
         else:
-            return StartTown + FarthestTown
+            return start_town + farthest_town
     else:
-        return StartTown + EndTown
+        return start_town + end_town
 
 
 # Open metadata csv file and write header
@@ -183,7 +182,7 @@ def ParseGPX(InputFile):
                     IncrementalDistance = distance(CurrentCoord, PreviousCoord).m
                     SplitDistance += IncrementalDistance
                     TotalDistance += IncrementalDistance
-                    Separation += IncrementalDistance
+                    separation += IncrementalDistance
                     # Straight line distance from start point
                     Distance = distance(StartCoord, CurrentCoord).m
                     if Distance > MaxDistance:
@@ -195,7 +194,7 @@ def ParseGPX(InputFile):
 
                 else:
                     # First time just set things up
-                    Separation = 0
+                    separation = 0
                     SplitDistance = 0
                     StartTime = point.time
                     StartCoord = (point.latitude, point.longitude)
@@ -204,12 +203,12 @@ def ParseGPX(InputFile):
                 PreviousCoord = (point.latitude, point.longitude)
                 PreviousTime = point.time
 
-                if Separation >= MINPOINTSEPARATION:
+                if separation >= MINPOINTSEPARATION:
                     # Add to track
                     AddGPSPoint(OutputGPX, point)
                     PointsWritten += 1
                     # Reset for next split
-                    Separation = 0
+                    separation = 0
 
                 if SplitDistance > SPLIT:
                     # Write split record to csv
@@ -229,7 +228,7 @@ def ParseGPX(InputFile):
                     SplitTime = timedelta(0, 0, 0)
                     PreviousTime = point.time
 
-                EndTime = point.time
+#                EndTime = point.time
 
     # Filename for gpx and split csv - output directory
     Activity = GetActvityType(TotalDistance, TotalTime.seconds)
