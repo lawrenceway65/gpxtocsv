@@ -233,10 +233,11 @@ def ParseGPX( InputFile ):
     OutputGPXFile.write(OutputGPX.to_xml())
     OutputGPXFile.close()
 
-    # Write split csv data
-    OutputGPXFile = open(OutputFileName + '.csv', 'w')
-    OutputGPXFile.write(SplitCSV)
-    OutputGPXFile.close()
+    # Write split csv data only for run and cycle
+    if Activity == 'Run' or Activity == 'Cycle':
+        OutputGPXFile = open(OutputFileName + '.csv', 'w')
+        OutputGPXFile.write(SplitCSV)
+        OutputGPXFile.close()
 
     # Write metadata to csv
     MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'),StartTime.strftime('%H:%m'),
