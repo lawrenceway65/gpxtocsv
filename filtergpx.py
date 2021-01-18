@@ -28,7 +28,6 @@ SPLIT = 250
 MINPOINTSEPARATION = 5
 
 
-
 def GetInputPath():
     """Return path for input data."""
     if os.name == 'nt':
@@ -153,7 +152,7 @@ def ParseGPX(InputFile):
     PointCount = 0
     PreviousCoord = (0.0, 0.0)
     StartCoord = None
-    IncrementalDistance = 0
+    incremental_distance = 0
     TotalDistance = 0
     PreviousTime = 0
     TotalTime = 0
@@ -178,16 +177,16 @@ def ParseGPX(InputFile):
                 PointCount += 1
                 if PointCount > 1:
                     # Position and incremental distance
-                    CurrentCoord = (point.latitude, point.longitude)
-                    IncrementalDistance = distance(CurrentCoord, PreviousCoord).m
-                    SplitDistance += IncrementalDistance
-                    TotalDistance += IncrementalDistance
-                    separation += IncrementalDistance
+                    current_coord = (point.latitude, point.longitude)
+                    incremental_distance = distance(current_coord, PreviousCoord).m
+                    SplitDistance += incremental_distance
+                    TotalDistance += incremental_distance
+                    separation += incremental_distance
                     # Straight line distance from start point
-                    Distance = distance(StartCoord, CurrentCoord).m
+                    Distance = distance(StartCoord, current_coord).m
                     if Distance > MaxDistance:
                         MaxDistance = Distance
-                        FarthestCoord = CurrentCoord
+                        FarthestCoord = current_coord
                     # Time    
                     TotalTime = point.time - StartTime
                     SplitTime += point.time - PreviousTime
