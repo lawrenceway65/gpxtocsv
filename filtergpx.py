@@ -38,10 +38,11 @@ def GetInputPath():
         return "/Users/lawrence/Downloads/"
 
 
-def GetOutputPath(activity, year):
+def GetOutputPath(activity='', year=0):
     """
     Get path for output files.
     Creates any folders that don't already exist.
+    Just return root path if no params provided
     """
     if os.name == 'nt':
         path = "C:\\Users\\Lawrence\\Documents\\GPX\\"
@@ -50,15 +51,16 @@ def GetOutputPath(activity, year):
         path = "/Users/lawrence/Documents/GPX/"
         separator = '/'
 
-    # Just create these if they don't exist
-    if not os.path.isdir(path + activity):
-        os.mkdir(path + activity)
+    if activity != '':
+        # Just create these if they don't exist
+        if not os.path.isdir(path + activity):
+            os.mkdir(path + activity)
 
-    full_path = path + activity + separator + year + separator
-    if not os.path.isdir(full_path):
-        os.mkdir(full_path)
+        path += activity + separator + year + separator
+        if not os.path.isdir(path):
+            os.mkdir(path)
 
-    return full_path
+    return path
 
 
 def GetActvityType(distance, time):
@@ -122,7 +124,9 @@ def GetLocation(start_coord, end_coord, farthest_coord):
 # Open metadata csv file and write header
 def OpenMetaDataCSV():
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
-    MetaDataCSV = open('%sOutput/ProcessGPX_%s.csv' % ("/Users/lawrence/Documents/GPX/Raw/", datetime.now().strftime("%d-%m-%Y_%H%M")), 'w')
+    MetaDataCSV = open(
+        '%sRaw/Output/ProcessGPX_%s.csv' % (GetOutputPath(), datetime.now().strftime("%d-%m-%Y_%H%M")),
+        'w')
     MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
     return MetaDataCSV
@@ -166,7 +170,7 @@ def ParseGPX(activity_id, gpx):
     SplitCSV = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 
     # Open input File
-#    GPXFile = open(InputFile, 'r')
+    #    GPXFile = open(InputFile, 'r')
     InputGPX = gpxpy.parse(gpx)
 
     # GPX output
@@ -229,9 +233,9 @@ def ParseGPX(activity_id, gpx):
                     SplitTime = timedelta(0, 0, 0)
                     PreviousTime = point.time
 
-#                EndTime = point.time
+    #                EndTime = point.time
 
-    # Filename for gpx and split csv - output directory
+    # Path / filename for gpx and split csv
     Activity = GetActvityType(TotalDistance, TotalTime.seconds)
     OutputFileName = '%s%s_%s_%dMile_%s' % (GetOutputPath(Activity, StartTime.strftime('%Y')),
                                             Activity,
@@ -260,37 +264,25 @@ def ParseGPX(activity_id, gpx):
 
     return
 
+
 MetaDataCSV = OpenMetaDataCSV()
 
-activity_count = 0
+activities = 0
 with GarminClient(garmincredential.username, garmincredential.password) as client:
     # By default download last five activities
     ids = client.list_activities(5)
     for activity_id in ids:
         gpx = client.get_activity_gpx(activity_id[0])
         # Only save and process if file not already saved from previous download
-        if not os.path.isfile('/Users/lawrence/Downloads/activity_%d.gpx' % (activity_id[0])):
-            raw_gpx_file = open('/Users/lawrence/Downloads/activity_%d.gpx' % (activity_id[0]), 'w')
+        output_file = '%s/Raw/activity_%d.gpx' % (GetOutputPath(), activity_id[0])
+        if not os.path.isfile(output_file):
+            raw_gpx_file = open(output_file, 'w')
             raw_gpx_file.write(gpx)
             raw_gpx_file.close()
             print('Saved activity_%d.gpx' % (activity_id[0]))
             ParseGPX(activity_id[0], gpx)
+            activities += 1
 
-
-
-# Iterate over every gpx file in dir
-# FilesProcessed = 0
-# for entry in os.scandir(GetInputPath()):
-#     if (entry.path.endswith(".gpx")):
-#         print('Processing: %s' % entry.path)
-#         ParseGPX(entry.path)
-#
-#         # Move file
-#         #
-#         # if os.path.isfile(entry.path + '/Processed'):
-#         #     os.remove(OutputFileName)
-#
-#         FilesProcessed += 1
 
 MetaDataCSV.close()
-print('%d files processed' % activity_count)
+print('%d files processed' % activities)
