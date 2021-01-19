@@ -110,7 +110,12 @@ def GetLocation(start_coord, end_coord, farthest_coord):
     start_town = GetTown(start_coord[0], start_coord[1]).replace(' ', '')
     end_town = GetTown(end_coord[0], end_coord[1]).replace(' ', '')
     farthest_town = GetTown(farthest_coord[0], farthest_coord[1]).replace(' ', '')
-    # print('Start: %s, End: %s, Farthest: %s' % (StartTown, EndTown, FarthestTown))
+#    print('Start: %s, End: %s, Farthest: %s' % (start_town, end_town, farthest_town))
+
+    # Horrible hack
+    if start_town == 'NewHaw':
+        start_town = 'Addlestone'
+
     # Might have been circular, in which case use farthest, avoid repetition if all the same
     if start_town == end_town:
         if end_town == farthest_town:
