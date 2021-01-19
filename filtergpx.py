@@ -19,6 +19,8 @@ import os
 import subprocess
 import json
 import shutil
+from garminget import GarminClient
+import garmincredential
 
 # Constants and definitions
 # Meters in a mile
@@ -33,7 +35,7 @@ def GetInputPath():
     if os.name == 'nt':
         return "C:\\Users\\Lawrence\\Downloads\\"
     else:
-        return "/Users/lawrence/Documents/GPX/Raw/"
+        return "/Users/lawrence/Downloads/"
 
 
 def GetOutputPath(activity, year):
@@ -120,7 +122,7 @@ def GetLocation(start_coord, end_coord, farthest_coord):
 # Open metadata csv file and write header
 def OpenMetaDataCSV():
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
-    MetaDataCSV = open('%sOutput/ProcessGPX_%s.csv' % (GetInputPath(), datetime.now().strftime("%d-%m-%Y_%H%M")), 'w')
+    MetaDataCSV = open('%sOutput/ProcessGPX_%s.csv' % ("/Users/lawrence/Documents/GPX/Raw/", datetime.now().strftime("%d-%m-%Y_%H%M")), 'w')
     MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
     return MetaDataCSV
@@ -147,7 +149,7 @@ def GetCSVFormat():
 
 # Function does nearly all the work - processes a single gpx file
 # Generates filtered gpx, split csv and add row of metadata
-def ParseGPX(InputFile):
+def ParseGPX(activity_id, gpx):
     # Variables
     PointCount = 0
     PreviousCoord = (0.0, 0.0)
@@ -164,8 +166,8 @@ def ParseGPX(InputFile):
     SplitCSV = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 
     # Open input File
-    GPXFile = open(InputFile, 'r')
-    InputGPX = gpxpy.parse(GPXFile)
+#    GPXFile = open(InputFile, 'r')
+    InputGPX = gpxpy.parse(gpx)
 
     # GPX output
     OutputGPX = SetUpGPX()
@@ -250,7 +252,7 @@ def ParseGPX(InputFile):
     # Write metadata to csv
     MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'), StartTime.strftime('%H:%m'),
                                                   Activity,
-                                                  InputFile[len(GetInputPath()):-4],
+                                                  'activity_%d' % activity_id,
                                                   TotalDistance,
                                                   TotalTime,
                                                   GetTown(StartCoord[0], StartCoord[1])))
@@ -258,24 +260,37 @@ def ParseGPX(InputFile):
 
     return
 
-
-# End of ParseGPX
-
 MetaDataCSV = OpenMetaDataCSV()
 
+activity_count = 0
+with GarminClient(garmincredential.username, garmincredential.password) as client:
+    # By default download last five activities
+    ids = client.list_activities(5)
+    for activity_id in ids:
+        gpx = client.get_activity_gpx(activity_id[0])
+        # Only save and process if file not already saved from previous download
+        if not os.path.isfile('/Users/lawrence/Downloads/activity_%d.gpx' % (activity_id[0])):
+            raw_gpx_file = open('/Users/lawrence/Downloads/activity_%d.gpx' % (activity_id[0]), 'w')
+            raw_gpx_file.write(gpx)
+            raw_gpx_file.close()
+            print('Saved activity_%d.gpx' % (activity_id[0]))
+            ParseGPX(activity_id[0], gpx)
+
+
+
 # Iterate over every gpx file in dir
-FilesProcessed = 0
-for entry in os.scandir(GetInputPath()):
-    if (entry.path.endswith(".gpx")):
-        print('Processing: %s' % entry.path)
-        ParseGPX(entry.path)
-
-        # Move file
-        #
-        # if os.path.isfile(entry.path + '/Processed'):
-        #     os.remove(OutputFileName)
-
-        FilesProcessed += 1
+# FilesProcessed = 0
+# for entry in os.scandir(GetInputPath()):
+#     if (entry.path.endswith(".gpx")):
+#         print('Processing: %s' % entry.path)
+#         ParseGPX(entry.path)
+#
+#         # Move file
+#         #
+#         # if os.path.isfile(entry.path + '/Processed'):
+#         #     os.remove(OutputFileName)
+#
+#         FilesProcessed += 1
 
 MetaDataCSV.close()
-print('%d files processed' % FilesProcessed)
+print('%d files processed' % activity_count)
