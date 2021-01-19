@@ -95,7 +95,7 @@ def GetTown(latitude, longitude):
     """Get location from co-ordinates. Use Open Street Map."""
     # Format string for OpenStreetMap request, zoom level 14 = suburb
     osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
-    result = subprocess.check_output(['curl', osm_request % (latitude, longitude)]).decode("utf-8")
+    result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)]).decode("utf-8")
     #    print(OSMRequest % (Latitude, Longitude))
     result_json = json.loads(result)
     town = result_json['display_name']
