@@ -242,11 +242,12 @@ def ParseGPX(activity_id, gpx):
 
     # Path / filename for gpx and split csv
     Activity = GetActvityType(TotalDistance, TotalTime.seconds)
+    location = GetLocation(StartCoord, PreviousCoord, FarthestCoord)
     OutputFileName = '%s%s_%s_%dMile_%s' % (GetOutputPath(Activity, StartTime.strftime('%Y')),
                                             Activity,
                                             StartTime.strftime('%Y-%m-%d_%H%M'),
                                             (TotalDistance / MILE),
-                                            GetLocation(StartCoord, PreviousCoord, FarthestCoord))
+                                            location)
     # Write gpx track
     OutputGPXFile = open(OutputFileName + '.gpx', 'w')
     OutputGPXFile.write(OutputGPX.to_xml())
@@ -264,7 +265,7 @@ def ParseGPX(activity_id, gpx):
                                                   'activity_%d' % activity_id,
                                                   TotalDistance,
                                                   TotalTime,
-                                                  GetTown(StartCoord[0], StartCoord[1])))
+                                                  location))
     print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
 
     return
