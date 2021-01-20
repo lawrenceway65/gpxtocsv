@@ -21,6 +21,7 @@ import json
 import shutil
 from garminget import GarminClient
 import garmincredential
+import re
 
 # Constants and definitions
 # Meters in a mile
@@ -92,17 +93,17 @@ def AddGPSPoint(gpx_track, point):
 
 
 def GetTown(latitude, longitude):
-    """Get location from co-ordinates. Use Open Street Map."""
-    # Format string for OpenStreetMap request, zoom level 14 = suburb
-    osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=14&format=json"
+    """Get location from co-ordinates. Use Open Street Map.
+    Uses OSM
+    Using street level (zoom = 16) and picking second item - gives more accurate result
+    """
+    osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=16&format=json"
+    #   print(OSMRequest % (Latitude, Longitude))
     result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)]).decode("utf-8")
-    #    print(OSMRequest % (Latitude, Longitude))
     result_json = json.loads(result)
-    town = result_json['display_name']
+    # Extract second item from 'display_name'
 
-    # Return first item in display name
-    return town[:town.find(',')]
-
+    return re.split(',', result_json['display_name'])[1]
 
 def GetLocation(start_coord, end_coord, farthest_coord):
     """Get location string for filename"""
