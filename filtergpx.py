@@ -15,6 +15,7 @@ import geopy
 from geopy.distance import distance
 # import datetime
 from datetime import datetime, timedelta
+import time
 import os
 import subprocess
 import json
@@ -207,6 +208,7 @@ def ParseGPX(activity_id, gpx):
                     separation = 0
                     SplitDistance = 0
                     StartTime = point.time
+                    local_start_time = time.localtime(point.time.timestamp())
                     StartCoord = (point.latitude, point.longitude)
                     SplitTime = timedelta(0, 0, 0)
 
@@ -225,8 +227,9 @@ def ParseGPX(activity_id, gpx):
                     # Calculate minutes per mile
                     Pace = SplitTime.seconds / 60 * MILE / SPLIT
                     # Add to csv. Pace output as decimal minutes and MM:SS
-                    SplitCSV += GetCSVFormat() % (point.time.strftime('%Y-%m-%d'),
-                                                  point.time.strftime('%H:%M:%S'),
+                    local_time = time.localtime(point.time.timestamp())
+                    SplitCSV += GetCSVFormat() % (time.strftime('%Y-%m-%d', local_time),
+                                                  time.strftime('%H:%M:%S', local_time),
                                                   SplitTime,
                                                   SplitDistance,
                                                   TotalTime,
@@ -245,7 +248,7 @@ def ParseGPX(activity_id, gpx):
     location = GetLocation(StartCoord, PreviousCoord, FarthestCoord)
     OutputFileName = '%s%s_%s_%dMile_%s' % (GetOutputPath(Activity, StartTime.strftime('%Y')),
                                             Activity,
-                                            StartTime.strftime('%Y-%m-%d_%H%M'),
+                                            time.strftime('%Y-%m-%d_%H%M', local_start_time),
                                             (TotalDistance / MILE),
                                             location)
     # Write gpx track
@@ -260,13 +263,13 @@ def ParseGPX(activity_id, gpx):
         OutputGPXFile.close()
 
     # Write metadata to csv
-    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'), StartTime.strftime('%H:%M'),
+    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d', local_start_time), time.strftime('%H:%M',local_start_time),
                                                   Activity,
                                                   'activity_%d' % activity_id,
                                                   TotalDistance,
                                                   TotalTime,
                                                   location))
-    print('%s trackpoints written %s' % (PointsWritten, OutputFileName))
+    print('%s trackpoints written to %s' % (PointsWritten, OutputFileName))
 
     return
 
@@ -276,11 +279,12 @@ MetaDataCSV = OpenMetaDataCSV()
 activities = 0
 with GarminClient(garmincredential.username, garmincredential.password) as client:
     # By default download last five activities
-    ids = client.list_activities(5)
+    ids = client.list_activities(1)
     for activity_id in ids:
         gpx = client.get_activity_gpx(activity_id[0])
         # Only save and process if file not already saved from previous download
         output_file = '%s/Import/Raw/activity_%d.gpx' % (GetOutputPath(), activity_id[0])
+
         if not os.path.isfile(output_file):
             raw_gpx_file = open(output_file, 'w')
             raw_gpx_file.write(gpx)
