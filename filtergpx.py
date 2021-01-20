@@ -46,18 +46,16 @@ def GetOutputPath(activity='', year=0):
     Just return root path if no params provided
     """
     if os.name == 'nt':
-        path = "C:\\Users\\Lawrence\\Documents\\GPSData\\"
-        separator = '\\'
+        path = "D:\\Documents\\GPSData\\"
     else:
         path = "/Users/lawrence/Documents/GPSData/"
-        separator = '/'
 
     if activity != '':
         # Just create these if they don't exist
         if not os.path.isdir(path + 'Activities/' + activity):
             os.mkdir(path + 'Activities/' + activity)
 
-        path += 'Activities/' + activity + separator + year + separator
+        path += 'Activities' + os.sep + activity + os.sep + year + os.sep
         if not os.path.isdir(path):
             os.mkdir(path)
 
@@ -132,7 +130,7 @@ def GetLocation(start_coord, end_coord, farthest_coord):
 def OpenMetaDataCSV():
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
     MetaDataCSV = open(
-        '%sImport/ProcessGPX_%s.csv' % (GetOutputPath(), datetime.now().strftime("%d-%m-%Y_%H%M")),
+        '%sImport%sProcessGPX_%s.csv' % (GetOutputPath(), os.sep, datetime.now().strftime("%d-%m-%Y_%H%M")),
         'w')
     MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
@@ -262,7 +260,7 @@ def ParseGPX(activity_id, gpx):
         OutputGPXFile.close()
 
     # Write metadata to csv
-    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'), StartTime.strftime('%H:%m'),
+    MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (StartTime.strftime('%Y-%m-%d'), StartTime.strftime('%H:%M'),
                                                   Activity,
                                                   'activity_%d' % activity_id,
                                                   TotalDistance,
