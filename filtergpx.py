@@ -46,18 +46,18 @@ def GetOutputPath(activity='', year=0):
     Just return root path if no params provided
     """
     if os.name == 'nt':
-        path = "C:\\Users\\Lawrence\\Documents\\GPX\\"
+        path = "C:\\Users\\Lawrence\\Documents\\GPSData\\"
         separator = '\\'
     else:
-        path = "/Users/lawrence/Documents/GPX/"
+        path = "/Users/lawrence/Documents/GPSData/"
         separator = '/'
 
     if activity != '':
         # Just create these if they don't exist
-        if not os.path.isdir(path + activity):
-            os.mkdir(path + activity)
+        if not os.path.isdir(path + 'Activities/' + activity):
+            os.mkdir(path + 'Activities/' + activity)
 
-        path += activity + separator + year + separator
+        path += 'Activities/' + activity + separator + year + separator
         if not os.path.isdir(path):
             os.mkdir(path)
 
@@ -101,9 +101,10 @@ def GetTown(latitude, longitude):
     #   print(OSMRequest % (Latitude, Longitude))
     result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)]).decode("utf-8")
     result_json = json.loads(result)
-    # Extract second item from 'display_name'
 
+    # Extract second item from 'display_name'
     return re.split(',', result_json['display_name'])[1]
+
 
 def GetLocation(start_coord, end_coord, farthest_coord):
     """Get location string for filename"""
@@ -131,7 +132,7 @@ def GetLocation(start_coord, end_coord, farthest_coord):
 def OpenMetaDataCSV():
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
     MetaDataCSV = open(
-        '%sRaw/Output/ProcessGPX_%s.csv' % (GetOutputPath(), datetime.now().strftime("%d-%m-%Y_%H%M")),
+        '%sImport/ProcessGPX_%s.csv' % (GetOutputPath(), datetime.now().strftime("%d-%m-%Y_%H%M")),
         'w')
     MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
@@ -281,12 +282,12 @@ with GarminClient(garmincredential.username, garmincredential.password) as clien
     for activity_id in ids:
         gpx = client.get_activity_gpx(activity_id[0])
         # Only save and process if file not already saved from previous download
-        output_file = '%s/Raw/activity_%d.gpx' % (GetOutputPath(), activity_id[0])
+        output_file = '%s/Import/Raw/activity_%d.gpx' % (GetOutputPath(), activity_id[0])
         if not os.path.isfile(output_file):
             raw_gpx_file = open(output_file, 'w')
             raw_gpx_file.write(gpx)
             raw_gpx_file.close()
-            print('Saved activity_%d.gpx' % (activity_id[0]))
+#            print('Saved activity_%d.gpx' % (activity_id[0]))
             ParseGPX(activity_id[0], gpx)
             activities += 1
 
