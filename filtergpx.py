@@ -130,15 +130,15 @@ def OpenMetaDataCSV():
 # Setup GPX - always one track and one segment
 def set_up_gpx():
     # GPX output
-    OutputGPX = gpxpy.gpx.GPX()
+    output_gpx = gpxpy.gpx.GPX()
     # Create track
     GPXTrack = gpxpy.gpx.GPXTrack()
-    OutputGPX.tracks.append(GPXTrack)
+    output_gpx.tracks.append(GPXTrack)
     # Create segment
     GPXSegment = gpxpy.gpx.GPXTrackSegment()
     GPXTrack.segments.append(GPXSegment)
 
-    return OutputGPX
+    return output_gpx
 
 
 # Format string for writung split to csv
@@ -184,9 +184,9 @@ def process_gpx(activity_id, gpx):
                     TotalDistance += incremental_distance
                     separation += incremental_distance
                     # Straight line distance from start point
-                    Distance = distance(StartCoord, current_coord).m
-                    if Distance > MaxDistance:
-                        MaxDistance = Distance
+                    distance_from_start = distance(StartCoord, current_coord).m
+                    if distance_from_start > MaxDistance:
+                        MaxDistance = distance_from_start
                         FarthestCoord = current_coord
                     # Time    
                     TotalTime = point.time - StartTime
@@ -243,15 +243,13 @@ def process_gpx(activity_id, gpx):
                                                 (TotalDistance / MILE),
                                                 location)
         # Write gpx track
-        OutputGPXFile = open(OutputFileName + '.gpx', 'w')
-        OutputGPXFile.write(OutputGPX.to_xml())
-        OutputGPXFile.close()
+        with open(OutputFileName + '.gpx', 'w') as gpx_file:
+            gpx_file.write(OutputGPX.to_xml())
 
         # Write split csv data only for run and cycle
         if Activity == 'Run' or Activity == 'Cycle':
-            OutputGPXFile = open(OutputFileName + '.csv', 'w')
-            OutputGPXFile.write(SplitCSV)
-            OutputGPXFile.close()
+            with open(OutputFileName + '.csv', 'w') as csv_file:
+                csv_file.write(SplitCSV)
 
         # Write metadata to csv
         MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d', local_start_time), time.strftime('%H:%M',local_start_time),
