@@ -77,6 +77,16 @@ def get_activity_type(distance, time):
     return activity
 
 
+def calculate_distance(point1, point2):
+    """Wrapper for distance calculation
+    Pass in gps points, return separation
+    """
+    coord1 = (point1.latitude, point1.longitude)
+    coord2 = (point2.latitude, point2.longitude)
+
+    return distance(coord1, coord2).meters
+
+
 def add_gps_point(gpx_track, point):
     """Create new point and add to track."""
     new_point = gpxpy.gpx.GPXTrackPoint()
@@ -102,14 +112,14 @@ def get_locality(latitude, longitude):
     return re.split(',', result_json['display_name'])[1]
 
 
-def get_locality_string(start_coord, end_coord, farthest_coord):
+def get_locality_string(start_point, end_point, farthest_point):
     """Get location string for filename
     Default is: <start><end>
     """
     # Start/end - remove any spaces, don't want them in filename
-    start_locality = get_locality(start_coord[0], start_coord[1]).replace(' ', '')
-    end_locality = get_locality(end_coord[0], end_coord[1]).replace(' ', '')
-    farthest_locality = get_locality(farthest_coord[0], farthest_coord[1]).replace(' ', '')
+    start_locality = get_locality(start_point.latitude, start_point.longitude).replace(' ', '')
+    end_locality = get_locality(end_point.latitude, end_point.longitude).replace(' ', '')
+    farthest_locality = get_locality(farthest_point.latitude, farthest_point.longitude).replace(' ', '')
 #    print('Start: %s, End: %s, Farthest: %s' % (start_town, end_town, farthest_town))
 
     # Might have been circular, in which case use farthest. Avoid repetition if all the same.
@@ -157,17 +167,13 @@ def GetCSVFormat():
 def process_gpx(activity_id, gpx):
     # Variables
     PointCount = 0
-    PreviousCoord = (0.0, 0.0)
-    StartCoord = None
-    incremental_distance = 0
     TotalDistance = 0
-    PreviousTime = 0
     TotalTime = timedelta(0, 0, 0)
-    #    SplitTime = 0
-    StartTime = None
+    SplitTime = timedelta(0, 0, 0)
     SplitDistance = 0
     PointsWritten = 0
-    MaxDistance = 0
+    max_distance = 0
+    separation = 0
     SplitCSV = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 
     # Open input File
@@ -184,37 +190,31 @@ def process_gpx(activity_id, gpx):
                 PointCount += 1
                 if PointCount > 1:
                     # Position and incremental distance
-                    current_coord = (point.latitude, point.longitude)
-                    incremental_distance = distance(current_coord, PreviousCoord).m
+                    incremental_distance = calculate_distance(previous_point, point)
                     SplitDistance += incremental_distance
                     TotalDistance += incremental_distance
                     separation += incremental_distance
+
                     # Straight line distance from start point
-                    distance_from_start = distance(StartCoord, current_coord).m
-                    if distance_from_start > MaxDistance:
-                        MaxDistance = distance_from_start
-                        FarthestCoord = current_coord
-                    # Time    
-                    TotalTime = point.time - StartTime
-                    SplitTime += point.time - PreviousTime
+                    distance_from_start = calculate_distance(start_point, point)
+                    if distance_from_start > max_distance:
+                        max_distance = distance_from_start
+                        farthest_point = point
+
+                    # Time
+                    TotalTime = point.time - start_point.time
+                    SplitTime += point.time - previous_point.time
 
                 else:
                     # First time just set things up
-                    separation = 0
-                    SplitDistance = 0
-                    StartTime = point.time
-                    local_start_time = time.localtime(point.time.timestamp())
-                    StartCoord = (point.latitude, point.longitude)
-                    SplitTime = timedelta(0, 0, 0)
+                    start_point = point
 
-                PreviousCoord = (point.latitude, point.longitude)
-                PreviousTime = point.time
+                previous_point = point
 
                 if separation >= MINPOINTSEPARATION:
-                    # Add to track
+                    # Add to track and reset
                     add_gps_point(OutputGPX, point)
                     PointsWritten += 1
-                    # Reset for next split
                     separation = 0
 
                 if SplitDistance > SPLIT:
@@ -233,18 +233,16 @@ def process_gpx(activity_id, gpx):
                     # Reset for next split - don't set distance to 0 to avoid cumulative errors
                     SplitDistance -= SPLIT
                     SplitTime = timedelta(0, 0, 0)
-                    PreviousTime = point.time
 
-    #                EndTime = point.time
 
     # Sometimes get an empty file
     if PointsWritten != 0:
         # Path / filename for gpx and split csv
         Activity = get_activity_type(TotalDistance, TotalTime.seconds)
-        location = get_locality_string(StartCoord, PreviousCoord, FarthestCoord)
-        OutputFileName = '%s%s_%s_%dMile_%s' % (get_output_path(Activity, StartTime.strftime('%Y')),
+        location = get_locality_string(start_point, previous_point, farthest_point)
+        OutputFileName = '%s%s_%s_%dMile_%s' % (get_output_path(Activity, start_point.time.strftime('%Y')),
                                                 Activity,
-                                                time.strftime('%Y-%m-%d_%H%M', local_start_time),
+                                                time.strftime('%Y-%m-%d_%H%M', time.localtime(start_point.time.timestamp())),
                                                 (TotalDistance / MILE),
                                                 location)
         # Write gpx track
@@ -257,7 +255,7 @@ def process_gpx(activity_id, gpx):
                 csv_file.write(SplitCSV)
 
         # Write metadata to csv
-        MetaDataCSV.write('%s,%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d', local_start_time), time.strftime('%H:%M',local_start_time),
+        MetaDataCSV.write('%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
                                                   Activity,
                                                   'activity_%d' % activity_id,
                                                   TotalDistance,
