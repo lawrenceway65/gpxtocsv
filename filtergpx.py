@@ -20,7 +20,7 @@ import os
 import subprocess
 import json
 import shutil
-from garminget import GarminClient
+from garminexport.garminclient import GarminClient
 import garmincredential
 import re
 import io
@@ -33,15 +33,15 @@ SPLIT = 250
 MINPOINTSEPARATION = 5
 
 
-def GetInputPath():
-    """Return path for input data."""
-    if os.name == 'nt':
-        return "C:\\Users\\Lawrence\\Downloads\\"
-    else:
-        return "/Users/lawrence/Downloads/"
+# def GetInputPath():
+#     """Return path for input data."""
+#     if os.name == 'nt':
+#         return "C:\\Users\\Lawrence\\Downloads\\"
+#     else:
+#         return "/Users/lawrence/Downloads/"
 
 
-def GetOutputPath(activity='', year=0):
+def get_output_path(activity='', year=0):
     """
     Get path for output files.
     Creates any folders that don't already exist.
@@ -64,7 +64,7 @@ def GetOutputPath(activity='', year=0):
     return path
 
 
-def GetActvityType(distance, time):
+def get_activity_type(distance, time):
     """Calculate pace (min/mile) and return matching activity.
     """
     pace = time / 60 * MILE / distance
@@ -80,7 +80,7 @@ def GetActvityType(distance, time):
     return activity
 
 
-def AddGPSPoint(gpx_track, point):
+def add_gps_point(gpx_track, point):
     """Create new point and add to track."""
     new_point = gpxpy.gpx.GPXTrackPoint()
     new_point.latitude = point.latitude
@@ -92,7 +92,7 @@ def AddGPSPoint(gpx_track, point):
     return
 
 
-def GetTown(latitude, longitude):
+def get_locality(latitude, longitude):
     """Get location from co-ordinates. Use Open Street Map.
     Uses OSM
     Using street level (zoom = 16) and picking second item - gives more accurate result
@@ -106,12 +106,12 @@ def GetTown(latitude, longitude):
     return re.split(',', result_json['display_name'])[1]
 
 
-def GetLocation(start_coord, end_coord, farthest_coord):
+def get_locality_string(start_coord, end_coord, farthest_coord):
     """Get location string for filename"""
     # Start/end - remove any spaces, don't want them in filename
-    start_town = GetTown(start_coord[0], start_coord[1]).replace(' ', '')
-    end_town = GetTown(end_coord[0], end_coord[1]).replace(' ', '')
-    farthest_town = GetTown(farthest_coord[0], farthest_coord[1]).replace(' ', '')
+    start_town = get_locality(start_coord[0], start_coord[1]).replace(' ', '')
+    end_town = get_locality(end_coord[0], end_coord[1]).replace(' ', '')
+    farthest_town = get_locality(farthest_coord[0], farthest_coord[1]).replace(' ', '')
 #    print('Start: %s, End: %s, Farthest: %s' % (start_town, end_town, farthest_town))
 
     # Might have been circular, in which case use farthest, avoid repetition if all the same
@@ -127,7 +127,7 @@ def GetLocation(start_coord, end_coord, farthest_coord):
 # Open metadata csv file and write header
 def OpenMetaDataCSV():
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
-    MetaDataCSV = io.open('%sImport%sProcessGPX_%s.csv' % (GetOutputPath(), os.sep, datetime.now().strftime("%d-%m-%Y_%H%M")),
+    MetaDataCSV = io.open('%sImport%sProcessGPX_%s.csv' % (get_output_path(), os.sep, datetime.now().strftime("%d-%m-%Y_%H%M")),
         'w', encoding='utf-8')
     MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
@@ -135,7 +135,7 @@ def OpenMetaDataCSV():
 
 
 # Setup GPX - always one track and one segment
-def SetUpGPX():
+def set_up_gpx():
     # GPX output
     OutputGPX = gpxpy.gpx.GPX()
     # Create track
@@ -155,7 +155,7 @@ def GetCSVFormat():
 
 # Function does nearly all the work - processes a single gpx file
 # Generates filtered gpx, split csv and add row of metadata
-def ParseGPX(activity_id, gpx):
+def process_gpx(activity_id, gpx):
     # Variables
     PointCount = 0
     PreviousCoord = (0.0, 0.0)
@@ -176,7 +176,7 @@ def ParseGPX(activity_id, gpx):
     InputGPX = gpxpy.parse(gpx)
 
     # GPX output
-    OutputGPX = SetUpGPX()
+    OutputGPX = set_up_gpx()
 
     # Parse file to extract data
     for track in InputGPX.tracks:
@@ -213,7 +213,7 @@ def ParseGPX(activity_id, gpx):
 
                 if separation >= MINPOINTSEPARATION:
                     # Add to track
-                    AddGPSPoint(OutputGPX, point)
+                    add_gps_point(OutputGPX, point)
                     PointsWritten += 1
                     # Reset for next split
                     separation = 0
@@ -242,13 +242,13 @@ def ParseGPX(activity_id, gpx):
     # Sometimes get an empty file
     if PointsWritten != 0:
         # Path / filename for gpx and split csv
-        Activity = GetActvityType(TotalDistance, TotalTime.seconds)
-        location = GetLocation(StartCoord, PreviousCoord, FarthestCoord)
-        OutputFileName = '%s%s_%s_%dMile_%s' % (GetOutputPath(Activity, StartTime.strftime('%Y')),
-                                            Activity,
-                                            time.strftime('%Y-%m-%d_%H%M', local_start_time),
-                                            (TotalDistance / MILE),
-                                            location)
+        Activity = get_activity_type(TotalDistance, TotalTime.seconds)
+        location = get_locality_string(StartCoord, PreviousCoord, FarthestCoord)
+        OutputFileName = '%s%s_%s_%dMile_%s' % (get_output_path(Activity, StartTime.strftime('%Y')),
+                                                Activity,
+                                                time.strftime('%Y-%m-%d_%H%M', local_start_time),
+                                                (TotalDistance / MILE),
+                                                location)
         # Write gpx track
         OutputGPXFile = open(OutputFileName + '.gpx', 'w')
         OutputGPXFile.write(OutputGPX.to_xml())
@@ -277,16 +277,18 @@ MetaDataCSV = OpenMetaDataCSV()
 activities = 0
 with GarminClient(garmincredential.username, garmincredential.password) as client:
     # By default download last five activities
-    ids = client.list_activities()
+    ids = client.list_activities(5)
     for activity_id in ids:
-        output_file = '%s/Import/Raw/activity_%d.gpx' % (GetOutputPath(), activity_id[0])
+        output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id[0])
 #        print(output_file)
 
         # Only save and process if file not already saved from previous download
-        if not os.path.isfile(output_file):
+        if os.path.isfile(output_file):
+            print("activity_%d already downloaded" % activity_id[0])
+        else:
             # Download and process the gpx file
             gpx = client.get_activity_gpx(activity_id[0])
-            ParseGPX(activity_id[0], gpx)
+            process_gpx(activity_id[0], gpx)
             # Save it
             raw_gpx_file = open(output_file, 'w')
             raw_gpx_file.write(gpx)
