@@ -56,10 +56,15 @@ def get_output_path(activity='', year=0):
     return path
 
 
+def get_pace(time, distance):
+    """Calculate pace in minutes per mile"""
+    return time / 60 * MILE / distance
+
+
 def get_activity_type(distance, time):
     """Calculate pace (min/mile) and return matching activity.
     """
-    pace = time / 60 * MILE / distance
+    pace = get_pace(time, distance)
     if pace > 12:
         activity = 'Hike'
     elif pace > 7:
@@ -146,6 +151,7 @@ def GetCSVFormat():
     return '%s,%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
 
+
 # Function does nearly all the work - processes a single gpx file
 # Generates filtered gpx, split csv and add row of metadata
 def process_gpx(activity_id, gpx):
@@ -212,10 +218,9 @@ def process_gpx(activity_id, gpx):
                     separation = 0
 
                 if SplitDistance > SPLIT:
-                    # Write split record to csv
-                    # Calculate minutes per mile
-                    Pace = SplitTime.seconds / 60 * MILE / SPLIT
-                    # Add to csv. Pace output as decimal minutes and MM:SS
+                    # Add split record to csv
+                    pace = get_pace(SplitTime.seconds, SplitDistance)
+                    # Pace output as decimal minutes and MM:SS
                     local_time = time.localtime(point.time.timestamp())
                     SplitCSV += GetCSVFormat() % (time.strftime('%Y-%m-%d', local_time),
                                                   time.strftime('%H:%M:%S', local_time),
@@ -223,8 +228,8 @@ def process_gpx(activity_id, gpx):
                                                   SplitDistance,
                                                   TotalTime,
                                                   TotalDistance,
-                                                  Pace,
-                                                  int(Pace), (Pace % 1 * 60))
+                                                  pace,
+                                                  int(pace), (pace % 1 * 60))
                     # Reset for next split - don't set distance to 0 to avoid cumulative errors
                     SplitDistance -= SPLIT
                     SplitTime = timedelta(0, 0, 0)
