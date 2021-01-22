@@ -33,14 +33,6 @@ SPLIT = 250
 MINPOINTSEPARATION = 5
 
 
-# def GetInputPath():
-#     """Return path for input data."""
-#     if os.name == 'nt':
-#         return "C:\\Users\\Lawrence\\Downloads\\"
-#     else:
-#         return "/Users/lawrence/Downloads/"
-
-
 def get_output_path(activity='', year=0):
     """
     Get path for output files.
@@ -94,8 +86,7 @@ def add_gps_point(gpx_track, point):
 
 def get_locality(latitude, longitude):
     """Get location from co-ordinates. Use Open Street Map.
-    Uses OSM
-    Using street level (zoom = 16) and picking second item - gives more accurate result
+    Using street level (zoom = 16) and picking second item, gives more accurate result
     """
     osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=16&format=json"
     #   print(OSMRequest % (Latitude, Longitude))
@@ -107,21 +98,23 @@ def get_locality(latitude, longitude):
 
 
 def get_locality_string(start_coord, end_coord, farthest_coord):
-    """Get location string for filename"""
+    """Get location string for filename
+    Default is: <start><end>
+    """
     # Start/end - remove any spaces, don't want them in filename
-    start_town = get_locality(start_coord[0], start_coord[1]).replace(' ', '')
-    end_town = get_locality(end_coord[0], end_coord[1]).replace(' ', '')
-    farthest_town = get_locality(farthest_coord[0], farthest_coord[1]).replace(' ', '')
+    start_locality = get_locality(start_coord[0], start_coord[1]).replace(' ', '')
+    end_locality = get_locality(end_coord[0], end_coord[1]).replace(' ', '')
+    farthest_locality = get_locality(farthest_coord[0], farthest_coord[1]).replace(' ', '')
 #    print('Start: %s, End: %s, Farthest: %s' % (start_town, end_town, farthest_town))
 
-    # Might have been circular, in which case use farthest, avoid repetition if all the same
-    if start_town == end_town:
-        if end_town == farthest_town:
-            return start_town
+    # Might have been circular, in which case use farthest. Avoid repetition if all the same.
+    if start_locality == end_locality:
+        if end_locality == farthest_locality:
+            return start_locality
         else:
-            return start_town + farthest_town
+            return start_locality + farthest_locality
     else:
-        return start_town + end_town
+        return start_locality + end_locality
 
 
 # Open metadata csv file and write header
