@@ -157,6 +157,16 @@ def set_up_gpx():
 
 def save_activity_data(activity_id, start_point, end_point, farthest_point, distance, point_count, gpx_data, split_data):
     """Save associated data
+    Generate filename, save gpx data, save split data, save meta data
+
+    :param activity_id: id
+    :param start_point: start - with next two params, used to generate location string
+    :param end_point: end
+    :param farthest_point: farthest
+    :param distance: activity total distance
+    :param point_count: number of gpx points to write (for info)
+    :param gpx_data: gpx xml to write
+    :param split_data: csv split data
     """
     # Path / filename for gpx and split csv
     activity_type = get_activity_type((end_point.time-start_point.time).seconds, distance)
@@ -232,7 +242,6 @@ def process_gpx(activity_id, gpx_xml):
                     if distance_from_start > max_distance:
                         max_distance = distance_from_start
                         farthest_point = point
-
                 else:
                     # First time, add first point
                     start_point = point
@@ -240,6 +249,7 @@ def process_gpx(activity_id, gpx_xml):
 
                 previous_point = point
 
+                # If we have we moved 5m, add next point
                 if separation >= MINPOINTSEPARATION:
                     # Add to track and reset
                     add_gps_point(output_gpx, point)
@@ -247,8 +257,8 @@ def process_gpx(activity_id, gpx_xml):
                     total_distance += separation
                     separation = 0
 
+                # If we have completed a split, write a csv record
                 if split_distance > SPLIT:
-                    # Add split record to csv
                     pace = get_pace(split_time.seconds, split_distance)
                     # Pace output as decimal minutes and MM:SS
                     split_csv += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
@@ -262,10 +272,16 @@ def process_gpx(activity_id, gpx_xml):
                     split_distance -= SPLIT
                     split_time = timedelta(0, 0, 0)
 
-
-    # Only save it if we actually have some data
+    # Save everything, but only if we actually have some data
     if points_written != 0:
-        save_activity_data(activity_id, start_point, point, farthest_point, total_distance, points_written, output_gpx, split_csv)
+        save_activity_data(activity_id,
+                           start_point,
+                           point,
+                           farthest_point,
+                           total_distance,
+                           points_written,
+                           output_gpx,
+                           split_csv)
 
     return
 
