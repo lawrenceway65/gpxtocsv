@@ -11,15 +11,12 @@ Created on 9 Jan 2021
 
 import gpxpy
 import gpxpy.gpx
-import geopy
 from geopy.distance import distance
-# import datetime
 from datetime import datetime, timedelta
 import time
 import os
 import subprocess
 import json
-import shutil
 from garminexport.garminclient import GarminClient
 import garmincredential
 import re
@@ -31,6 +28,9 @@ MILE = 1609
 SPLIT = 250
 # Only write points farther apart than this (meters)
 MINPOINTSEPARATION = 5
+# For splits data output
+split_csv_header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
+split_csv_format_string = '%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
 
 def get_output_path(activity='', year=0):
@@ -61,7 +61,7 @@ def get_pace(time, distance):
     return time / 60 * MILE / distance
 
 
-def get_activity_type(distance, time):
+def get_activity_type(time, distance):
     """Calculate pace (min/mile) and return matching activity.
     """
     pace = get_pace(time, distance)
@@ -132,34 +132,27 @@ def get_locality_string(start_point, end_point, farthest_point):
         return start_locality + end_locality
 
 
-# Open metadata csv file and write header
-def OpenMetaDataCSV():
+def open_metadata_file():
+    """Open metadata csv file and write header"""
     # Filename ProcessGPX_YY-MM-DD_HHMM.csv
-    MetaDataCSV = io.open('%sImport%sProcessGPX_%s.csv' % (get_output_path(), os.sep, datetime.now().strftime("%d-%m-%Y_%H%M")),
+    csv_file = io.open('%sImport%sProcessGPX_%s.csv' % (get_output_path(), os.sep, datetime.now().strftime("%d-%m-%Y_%H%M")),
         'w', encoding='utf-8')
-    MetaDataCSV.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
+    csv_file.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
 
-    return MetaDataCSV
+    return csv_file
 
 
-# Setup GPX - always one track and one segment
 def set_up_gpx():
-    # GPX output
-    output_gpx = gpxpy.gpx.GPX()
+    """Setup GPX - always one track and one segment"""
+    gpx = gpxpy.gpx.GPX()
     # Create track
-    GPXTrack = gpxpy.gpx.GPXTrack()
-    output_gpx.tracks.append(GPXTrack)
+    track = gpxpy.gpx.GPXTrack()
+    gpx.tracks.append(track)
     # Create segment
-    GPXSegment = gpxpy.gpx.GPXTrackSegment()
-    GPXTrack.segments.append(GPXSegment)
+    segment = gpxpy.gpx.GPXTrackSegment()
+    track.segments.append(segment)
 
-    return output_gpx
-
-
-# Format string for writung split to csv
-def GetCSVFormat():
-    return '%s,%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
-
+    return gpx
 
 
 # Function does nearly all the work - processes a single gpx file
@@ -174,7 +167,7 @@ def process_gpx(activity_id, gpx):
     PointsWritten = 0
     max_distance = 0
     separation = 0
-    SplitCSV = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
+    split_csv = split_csv_header
 
     # Open input File
     #    GPXFile = open(InputFile, 'r')
@@ -221,9 +214,7 @@ def process_gpx(activity_id, gpx):
                     # Add split record to csv
                     pace = get_pace(SplitTime.seconds, SplitDistance)
                     # Pace output as decimal minutes and MM:SS
-                    local_time = time.localtime(point.time.timestamp())
-                    SplitCSV += GetCSVFormat() % (time.strftime('%Y-%m-%d', local_time),
-                                                  time.strftime('%H:%M:%S', local_time),
+                    split_csv += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
                                                   SplitTime,
                                                   SplitDistance,
                                                   TotalTime,
@@ -238,7 +229,7 @@ def process_gpx(activity_id, gpx):
     # Sometimes get an empty file
     if PointsWritten != 0:
         # Path / filename for gpx and split csv
-        Activity = get_activity_type(TotalDistance, TotalTime.seconds)
+        Activity = get_activity_type(TotalTime.seconds, TotalDistance)
         location = get_locality_string(start_point, previous_point, farthest_point)
         OutputFileName = '%s%s_%s_%dMile_%s' % (get_output_path(Activity, start_point.time.strftime('%Y')),
                                                 Activity,
@@ -252,7 +243,7 @@ def process_gpx(activity_id, gpx):
         # Write split csv data only for run and cycle
         if Activity == 'Run' or Activity == 'Cycle':
             with open(OutputFileName + '.csv', 'w') as csv_file:
-                csv_file.write(SplitCSV)
+                csv_file.write(split_csv)
 
         # Write metadata to csv
         MetaDataCSV.write('%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
@@ -266,7 +257,7 @@ def process_gpx(activity_id, gpx):
     return
 
 
-MetaDataCSV = OpenMetaDataCSV()
+MetaDataCSV = open_metadata_file()
 
 activities = 0
 with GarminClient(garmincredential.username, garmincredential.password) as client:
