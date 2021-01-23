@@ -4,6 +4,7 @@ Parses gpx file and creates new file. Any points less than 5m from previous poin
 Temperature data also excluded.
 New gpx named meaningfully, by activity type, date, tine and distance,
 Creates much smaller gpx that can be uploaded to outddorsgb
+Output splits data and activity metadata to csvs
 @author: lawrence
 """
 
@@ -16,10 +17,13 @@ import time
 import os
 import subprocess
 import json
-from garminexport.garminclient import GarminClient
-import garmincredential
+from garminexport import garminclient
+# from garminexport import GarminClient
 import re
 import io
+import garmincredential
+import config
+
 
 # Constants and definitions
 # Meters in a mile
@@ -289,10 +293,10 @@ def process_gpx(activity_id, gpx_xml):
 MetaDataCSV = open_metadata_file()
 
 # Don't necessarily want to download everything
-max_activities = 5
+max_activities = config.max_activities
 
-activities_processed = 0
-with GarminClient(garmincredential.username, garmincredential.password) as client:
+activities_saved = activities_processed = 0
+with garminclient.GarminClient(garmincredential.username, garmincredential.password) as client:
     # By default download last five activities
     ids = client.list_activities()
     for activity_id in ids:
@@ -311,11 +315,12 @@ with GarminClient(garmincredential.username, garmincredential.password) as clien
             raw_gpx_file.write(gpx)
             raw_gpx_file.close()
 #            print('Saved activity_%d.gpx' % (activity_id[0]))
-            activities_processed += 1
+            activities_saved += 1
+        activities_processed += 1
 
         # Drop out if limit reached
         if activities_processed >= max_activities:
             break
 
 MetaDataCSV.close()
-print('%d files processed' % activities_processed)
+print('Activities processed: %d, Activities saved: %d' % (activities_processed, activities_saved))
