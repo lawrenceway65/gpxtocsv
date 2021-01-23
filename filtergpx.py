@@ -1,13 +1,12 @@
-'''
+"""
 Created on 9 Jan 2021
-
+Parses gpx file and creates new file. Any points less than 5m from previous point are excluded.
+Temperature data also excluded.
+New gpx named meaningfully, by activity type, date, tine and distance,
+Creates much smaller gpx that can be uploaded to outddorsgb
 @author: lawrence
-'''
+"""
 
-# Parses gpx file and creates new file. Any points less than 5m from previous point are excluded.
-# Temperature data also excluded.
-# New gpx named meaningfully, by activity type, date, tine and distance,
-# Creates much smaller gpx that can be uploaded to outddorsgb  
 
 import gpxpy
 import gpxpy.gpx
@@ -94,6 +93,7 @@ def add_gps_point(gpx_track, point):
     new_point.longitude = point.longitude
     new_point.time = point.time
     new_point.elevation = point.elevation
+    # Only ever single track and segment
     gpx_track.tracks[0].segments[0].points.append(new_point)
 
     return
@@ -288,10 +288,13 @@ def process_gpx(activity_id, gpx_xml):
 
 MetaDataCSV = open_metadata_file()
 
-activities = 0
+# Don't necessarily want to download everything
+max_activities = 5
+
+activities_processed = 0
 with GarminClient(garmincredential.username, garmincredential.password) as client:
     # By default download last five activities
-    ids = client.list_activities(5)
+    ids = client.list_activities()
     for activity_id in ids:
         output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id[0])
 #        print(output_file)
@@ -308,8 +311,11 @@ with GarminClient(garmincredential.username, garmincredential.password) as clien
             raw_gpx_file.write(gpx)
             raw_gpx_file.close()
 #            print('Saved activity_%d.gpx' % (activity_id[0]))
-            activities += 1
+            activities_processed += 1
 
+        # Drop out if limit reached
+        if activities_processed >= max_activities:
+            break
 
 MetaDataCSV.close()
-print('%d files processed' % activities)
+print('%d files processed' % activities_processed)
