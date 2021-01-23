@@ -17,8 +17,7 @@ import time
 import os
 import subprocess
 import json
-from garminexport import garminclient
-# from garminexport import GarminClient
+from garminexport.garminclient import GarminClient
 import re
 import io
 import garmincredential
@@ -296,7 +295,7 @@ MetaDataCSV = open_metadata_file()
 max_activities = config.max_activities
 
 activities_saved = activities_processed = 0
-with garminclient.GarminClient(garmincredential.username, garmincredential.password) as client:
+with GarminClient(garmincredential.username, garmincredential.password) as client:
     # By default download last five activities
     ids = client.list_activities()
     for activity_id in ids:
