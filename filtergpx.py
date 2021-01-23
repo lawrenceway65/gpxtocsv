@@ -155,6 +155,39 @@ def set_up_gpx():
     return gpx
 
 
+def save_activity_data(activity_id, start_point, end_point, farthest_point, distance, point_count, gpx_data, split_data):
+    """Save associated data
+    """
+    # Path / filename for gpx and split csv
+    activity_type = get_activity_type((end_point.time-start_point.time).seconds, distance)
+    location = get_locality_string(start_point, end_point, farthest_point)
+    output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, start_point.time.strftime('%Y')),
+                                                activity_type,
+                                                time.strftime('%Y-%m-%d_%H%M', time.localtime(start_point.time.timestamp())),
+                                                (distance / MILE),
+                                                location)
+    # Write gpx track
+    with open(output_filename + '.gpx', 'w') as gpx_file:
+        gpx_file.write(gpx_data.to_xml())
+
+    # Write split csv data only for run and cycle
+    if activity_type == 'Run' or activity_type == 'Cycle':
+        with open(output_filename + '.csv', 'w') as csv_file:
+            csv_file.write(split_data)
+
+    # Write metadata to csv
+    MetaDataCSV.write('%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
+                                                  activity_type,
+                                                  'activity_%d' % activity_id,
+                                                  distance,
+                                                  end_point.time - start_point.time,
+                                                  location))
+
+    print('%s trackpoints written to %s' % (point_count, output_filename))
+
+    return
+
+
 def process_gpx(activity_id, gpx_xml):
     """Process gpx data as follows:
     Filter gpx to only include points with >=5m separation and basic data only (lat, long, time, elev)
@@ -171,14 +204,13 @@ def process_gpx(activity_id, gpx_xml):
     :type gpx_xml: xml
     """
     # Variables
-    PointCount = 0
-    TotalDistance = 0
-    TotalTime = timedelta(0, 0, 0)
-    SplitTime = timedelta(0, 0, 0)
-    SplitDistance = 0
-    PointsWritten = 0
+    point_count = 0
+    total_distance = 0
+    split_distance = 0
+    points_written = 0
     max_distance = 0
     separation = 0
+    split_time = timedelta(0, 0, 0)
     split_csv = split_csv_header
     output_gpx = set_up_gpx()
 
@@ -187,22 +219,19 @@ def process_gpx(activity_id, gpx_xml):
     for track in input_gpx.tracks:
         for segment in track.segments:
             for point in segment.points:
-                PointCount += 1
-                if PointCount > 1:
-                    # Position and incremental distance
+                point_count += 1
+                if point_count > 1:
+                    # Distance from last point
                     incremental_distance = calculate_distance(previous_point, point)
-                    SplitDistance += incremental_distance
+                    split_distance += incremental_distance
                     separation += incremental_distance
+                    split_time += point.time - previous_point.time
 
                     # Straight line distance from start point
                     distance_from_start = calculate_distance(start_point, point)
                     if distance_from_start > max_distance:
                         max_distance = distance_from_start
                         farthest_point = point
-
-                    # Time
-#                    TotalTime = point.time - start_point.time
-                    SplitTime += point.time - previous_point.time
 
                 else:
                     # First time, add first point
@@ -214,53 +243,29 @@ def process_gpx(activity_id, gpx_xml):
                 if separation >= MINPOINTSEPARATION:
                     # Add to track and reset
                     add_gps_point(output_gpx, point)
-                    PointsWritten += 1
-                    TotalDistance += separation
+                    points_written += 1
+                    total_distance += separation
                     separation = 0
 
-                if SplitDistance > SPLIT:
+                if split_distance > SPLIT:
                     # Add split record to csv
-                    pace = get_pace(SplitTime.seconds, SplitDistance)
+                    pace = get_pace(split_time.seconds, split_distance)
                     # Pace output as decimal minutes and MM:SS
                     split_csv += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
-                                                  SplitTime,
-                                                  SplitDistance,
+                                                  split_time,
+                                                  split_distance,
                                                   point.time - start_point.time,
-                                                  TotalDistance,
+                                                  total_distance,
                                                   pace,
                                                   int(pace), (pace % 1 * 60))
                     # Reset for next split - don't set distance to 0 to avoid cumulative errors
-                    SplitDistance -= SPLIT
-                    SplitTime = timedelta(0, 0, 0)
+                    split_distance -= SPLIT
+                    split_time = timedelta(0, 0, 0)
 
 
-    # Sometimes get an empty file
-    if PointsWritten != 0:
-        # Path / filename for gpx and split csv
-        Activity = get_activity_type(TotalTime.seconds, TotalDistance)
-        location = get_locality_string(start_point, previous_point, farthest_point)
-        OutputFileName = '%s%s_%s_%dMile_%s' % (get_output_path(Activity, start_point.time.strftime('%Y')),
-                                                Activity,
-                                                time.strftime('%Y-%m-%d_%H%M', time.localtime(start_point.time.timestamp())),
-                                                (TotalDistance / MILE),
-                                                location)
-        # Write gpx track
-        with open(OutputFileName + '.gpx', 'w') as gpx_file:
-            gpx_file.write(output_gpx.to_xml())
-
-        # Write split csv data only for run and cycle
-        if Activity == 'Run' or Activity == 'Cycle':
-            with open(OutputFileName + '.csv', 'w') as csv_file:
-                csv_file.write(split_csv)
-
-        # Write metadata to csv
-        MetaDataCSV.write('%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
-                                                  Activity,
-                                                  'activity_%d' % activity_id,
-                                                  TotalDistance,
-                                                  point.time - start_point.time,
-                                                  location))
-        print('%s trackpoints written to %s' % (PointsWritten, OutputFileName))
+    # Only save it if we actually have some data
+    if points_written != 0:
+        save_activity_data(activity_id, start_point, point, farthest_point, total_distance, points_written, output_gpx, split_csv)
 
     return
 
