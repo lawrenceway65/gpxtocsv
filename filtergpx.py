@@ -238,7 +238,6 @@ def process_gpx(activity_id, gpx_xml):
                     incremental_distance = calculate_distance(previous_point, point)
                     split_distance += incremental_distance
                     separation += incremental_distance
-                    split_time += point.time - previous_point.time
 
                     # Straight line distance from start point
                     distance_from_start = calculate_distance(start_point, point)
@@ -273,7 +272,6 @@ def process_gpx(activity_id, gpx_xml):
                                                   int(pace), (pace % 1 * 60))
                     # Reset for next split - don't set distance to 0 to avoid cumulative errors
                     split_distance -= SPLIT
-                    split_time = timedelta(0, 0, 0)
 
     # Save everything, but only if we actually have some data
     if points_written != 0:

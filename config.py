@@ -1,1 +1,1 @@
-max_activities = 5
+max_activities = 9999
