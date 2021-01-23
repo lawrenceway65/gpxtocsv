@@ -155,9 +155,21 @@ def set_up_gpx():
     return gpx
 
 
-# Function does nearly all the work - processes a single gpx file
-# Generates filtered gpx, split csv and add row of metadata
-def process_gpx(activity_id, gpx):
+def process_gpx(activity_id, gpx_xml):
+    """Process gpx data as follows:
+    Filter gpx to only include points with >=5m separation and basic data only (lat, long, time, elev)
+    Generate split data and (for run and cycle activities) write to csv
+    Determine activity type from average pace
+    Determine location from start, end and farthest points
+    Name output files <activity>_<date>_<time>_<distance>_<location>
+    Write output files to dir structure by activitiy type and year
+    Add row of metadata for activity
+
+    :param activity_id: id of activity (eg garmin id)
+    :type activity_id: int
+    :param gpx_xml: gpx data
+    :type gpx_xml: xml
+    """
     # Variables
     PointCount = 0
     TotalDistance = 0
@@ -168,16 +180,11 @@ def process_gpx(activity_id, gpx):
     max_distance = 0
     separation = 0
     split_csv = split_csv_header
+    output_gpx = set_up_gpx()
 
-    # Open input File
-    #    GPXFile = open(InputFile, 'r')
-    InputGPX = gpxpy.parse(gpx)
-
-    # GPX output
-    OutputGPX = set_up_gpx()
-
-    # Parse file to extract data
-    for track in InputGPX.tracks:
+    # Parse to gpx and iterate through
+    input_gpx = gpxpy.parse(gpx_xml)
+    for track in input_gpx.tracks:
         for segment in track.segments:
             for point in segment.points:
                 PointCount += 1
@@ -185,7 +192,6 @@ def process_gpx(activity_id, gpx):
                     # Position and incremental distance
                     incremental_distance = calculate_distance(previous_point, point)
                     SplitDistance += incremental_distance
-                    TotalDistance += incremental_distance
                     separation += incremental_distance
 
                     # Straight line distance from start point
@@ -195,19 +201,21 @@ def process_gpx(activity_id, gpx):
                         farthest_point = point
 
                     # Time
-                    TotalTime = point.time - start_point.time
+#                    TotalTime = point.time - start_point.time
                     SplitTime += point.time - previous_point.time
 
                 else:
-                    # First time just set things up
+                    # First time, add first point
                     start_point = point
+                    add_gps_point(output_gpx, start_point)
 
                 previous_point = point
 
                 if separation >= MINPOINTSEPARATION:
                     # Add to track and reset
-                    add_gps_point(OutputGPX, point)
+                    add_gps_point(output_gpx, point)
                     PointsWritten += 1
+                    TotalDistance += separation
                     separation = 0
 
                 if SplitDistance > SPLIT:
@@ -217,7 +225,7 @@ def process_gpx(activity_id, gpx):
                     split_csv += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
                                                   SplitTime,
                                                   SplitDistance,
-                                                  TotalTime,
+                                                  point.time - start_point.time,
                                                   TotalDistance,
                                                   pace,
                                                   int(pace), (pace % 1 * 60))
@@ -238,7 +246,7 @@ def process_gpx(activity_id, gpx):
                                                 location)
         # Write gpx track
         with open(OutputFileName + '.gpx', 'w') as gpx_file:
-            gpx_file.write(OutputGPX.to_xml())
+            gpx_file.write(output_gpx.to_xml())
 
         # Write split csv data only for run and cycle
         if Activity == 'Run' or Activity == 'Cycle':
@@ -250,7 +258,7 @@ def process_gpx(activity_id, gpx):
                                                   Activity,
                                                   'activity_%d' % activity_id,
                                                   TotalDistance,
-                                                  TotalTime,
+                                                  point.time - start_point.time,
                                                   location))
         print('%s trackpoints written to %s' % (PointsWritten, OutputFileName))
 
