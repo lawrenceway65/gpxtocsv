@@ -189,12 +189,12 @@ def save_activity_data(activity_id, start_point, end_point, farthest_point, dist
             csv_file.write(split_data)
 
     # Write metadata to csv
-    MetaDataCSV.write('%s,%s,%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
-                                                  activity_type,
-                                                  'activity_%d' % activity_id,
-                                                  distance,
-                                                  end_point.time - start_point.time,
-                                                  location))
+ #   MetaDataCSV.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
+ #                                                  activity_type,
+ #                                                  activity_id,
+ #                                                  distance,
+ #                                                  end_point.time - start_point.time,
+ #                                                  location))
 
     print('%s trackpoints written to %s' % (point_count, output_filename))
 
@@ -289,37 +289,40 @@ def process_gpx(activity_id, gpx_xml):
     return
 
 
-MetaDataCSV = open_metadata_file()
 
-# Don't necessarily want to download everything
-max_activities = config.max_activities
+if __name__ == "__main__":
 
-activities_saved = activities_processed = 0
-with GarminClient(garmincredential.username, garmincredential.password) as client:
-    # By default download last five activities
-    ids = client.list_activities()
-    for activity_id in ids:
-        output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id[0])
-#        print(output_file)
+    MetaDataCSV = open_metadata_file()
 
-        # Only save and process if file not already saved from previous download
-        if os.path.isfile(output_file):
-            print("activity_%d already downloaded" % activity_id[0])
-        else:
-            # Download and process the gpx file
-            gpx = client.get_activity_gpx(activity_id[0])
-            process_gpx(activity_id[0], gpx)
-            # Save it
-            raw_gpx_file = open(output_file, 'w')
-            raw_gpx_file.write(gpx)
-            raw_gpx_file.close()
-#            print('Saved activity_%d.gpx' % (activity_id[0]))
-            activities_saved += 1
-        activities_processed += 1
+    # Don't necessarily want to download everything
+    max_activities = config.max_activities
 
-        # Drop out if limit reached
-        if activities_processed >= max_activities:
-            break
+    activities_saved = activities_processed = 0
+    with GarminClient(garmincredential.username, garmincredential.password) as client:
+        # By default download last five activities
+        ids = client.list_activities()
+        for activity_id in ids:
+            output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id[0])
+    #        print(output_file)
 
-MetaDataCSV.close()
-print('Activities processed: %d, Activities saved: %d' % (activities_processed, activities_saved))
+            # Only save and process if file not already saved from previous download
+            if os.path.isfile(output_file):
+                print("activity_%d already downloaded" % activity_id[0])
+            else:
+                # Download and process the gpx file
+                gpx = client.get_activity_gpx(activity_id[0])
+                process_gpx('%d' % activity_id[0], gpx)
+                # Save it
+                raw_gpx_file = open(output_file, 'w')
+                raw_gpx_file.write(gpx)
+                raw_gpx_file.close()
+    #            print('Saved activity_%d.gpx' % (activity_id[0]))
+                activities_saved += 1
+            activities_processed += 1
+
+            # Drop out if limit reached
+            if activities_processed >= max_activities:
+                break
+
+    MetaDataCSV.close()
+    print('Activities processed: %d, Activities saved: %d' % (activities_processed, activities_saved))
