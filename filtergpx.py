@@ -162,7 +162,7 @@ def save_activity_data(activity_id, start_point, end_point, farthest_point, dist
     """Save associated data
     Generate filename, save gpx data, save split data, save meta data
 
-    :param activity_id: id
+    :param activity_id: identifier of original file
     :param start_point: start - with next two params, used to generate location string
     :param end_point: end
     :param farthest_point: farthest
@@ -211,8 +211,8 @@ def process_gpx(activity_id, gpx_xml):
     Write output files to dir structure by activitiy type and year
     Add row of metadata for activity
 
-    :param activity_id: id of activity (eg garmin id)
-    :type activity_id: int
+    :param activity_id: id of activity (eg garmin id or other identifier)
+    :type activity_id: string
     :param gpx_xml: gpx data
     :type gpx_xml: xml
     """
