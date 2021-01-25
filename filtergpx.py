@@ -189,12 +189,12 @@ def save_activity_data(activity_id, start_point, end_point, farthest_point, dist
             csv_file.write(split_data)
 
     # Write metadata to csv
- #   MetaDataCSV.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
- #                                                  activity_type,
- #                                                  activity_id,
- #                                                  distance,
- #                                                  end_point.time - start_point.time,
- #                                                  location))
+    MetaDataCSV.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
+                                                   activity_type,
+                                                   activity_id,
+                                                   distance,
+                                                   end_point.time - start_point.time,
+                                                   location))
 
     print('%s trackpoints written to %s' % (point_count, output_filename))
 
@@ -287,10 +287,10 @@ def process_gpx(activity_id, gpx_xml):
     return
 
 
+MetaDataCSV = open_metadata_file()
 
 if __name__ == "__main__":
 
-    MetaDataCSV = open_metadata_file()
 
     # Don't necessarily want to download everything
     max_activities = config.max_activities
