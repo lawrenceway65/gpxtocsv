@@ -61,9 +61,11 @@ def get_output_path(activity='', year=0):
 
 
 class MetadataCSV:
-#    lines_written = 0
-#    metadata_csv_filename = None
+    """Manages metadata csv.
+    File is only created if there is something to write.
+    """
     def __init__(self):
+        """Primarily initialises output filename"""
         self.lines_written = 0
         self.file = None
         self.metadata_csv_filename = metadata_csv_name_format_string % (get_output_path(),
@@ -71,9 +73,13 @@ class MetadataCSV:
                                                                         datetime.now().strftime("%d-%m-%Y_%H%M"))
 
     def __enter__(self):
+        """To allow use of with."""
         return self
 
     def write(self, s):
+        """Writes line to file.
+        If nothing written yet create the file and write header
+        """
         if self.lines_written == 0:
             self.file = io.open(self.metadata_csv_filename, 'w', encoding='utf-8')
             self.file.write(metadata_csv_header)
