@@ -34,6 +34,8 @@ MINPOINTSEPARATION = 5
 split_csv_header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 split_csv_format_string = '%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
+metadata_csv_name_format_string = '%sImport%sProcessGPX_%s.csv'
+metadata_csv_header = 'Date,Time,Activity,Garmin ID,Distance,Duration,Location\n'
 
 def get_output_path(activity='', year=0):
     """
@@ -56,6 +58,34 @@ def get_output_path(activity='', year=0):
             os.mkdir(path)
 
     return path
+
+
+class MetadataCSV:
+#    lines_written = 0
+#    metadata_csv_filename = None
+    def __init__(self):
+        self.lines_written = 0
+        self.file = None
+        self.metadata_csv_filename = metadata_csv_name_format_string % (get_output_path(),
+                                                                        os.sep,
+                                                                        datetime.now().strftime("%d-%m-%Y_%H%M"))
+
+    def __enter__(self):
+        return self
+
+    def write(self, s):
+        if self.lines_written == 0:
+            self.file = io.open(self.metadata_csv_filename, 'w', encoding='utf-8')
+            self.file.write(metadata_csv_header)
+        self.file.write(s)
+        self.lines_written += 1
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def __del__(self):
+        if self.lines_written > 0:
+            self.file.close()
 
 
 def get_pace(time, distance):
@@ -189,7 +219,7 @@ def save_activity_data(activity_id, start_point, end_point, farthest_point, dist
             csv_file.write(split_data)
 
     # Write metadata to csv
-    MetaDataCSV.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
+    metadata_csv.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
                                                    activity_type,
                                                    activity_id,
                                                    distance,
@@ -223,7 +253,6 @@ def process_gpx(activity_id, gpx_xml):
     points_written = 0
     max_distance = 0
     separation = 0
-    split_time = timedelta(0, 0, 0)
     split_csv = split_csv_header
     output_gpx = set_up_gpx()
 
@@ -246,7 +275,7 @@ def process_gpx(activity_id, gpx_xml):
                         farthest_point = point
                 else:
                     # First time, add first point
-                    start_point = point
+                    start_point = split_start_point = point
                     add_gps_point(output_gpx, start_point)
 
                 previous_point = point
@@ -261,6 +290,7 @@ def process_gpx(activity_id, gpx_xml):
 
                 # If we have completed a split, write a csv record
                 if split_distance > SPLIT:
+                    split_time = point.time - split_start_point.time
                     pace = get_pace(split_time.seconds, split_distance)
                     # Pace output as decimal minutes and MM:SS
                     split_csv += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
@@ -272,6 +302,7 @@ def process_gpx(activity_id, gpx_xml):
                                                   int(pace), (pace % 1 * 60))
                     # Reset for next split - don't set distance to 0 to avoid cumulative errors
                     split_distance -= SPLIT
+                    split_start_point = point
 
     # Save everything, but only if we actually have some data
     if points_written != 0:
@@ -287,10 +318,9 @@ def process_gpx(activity_id, gpx_xml):
     return
 
 
-MetaDataCSV = open_metadata_file()
+metadata_csv = MetadataCSV()
 
 if __name__ == "__main__":
-
 
     # Don't necessarily want to download everything
     max_activities = config.max_activities
@@ -322,5 +352,5 @@ if __name__ == "__main__":
             if activities_processed >= max_activities:
                 break
 
-    MetaDataCSV.close()
+#    MetaDataCSV.close()
     print('Activities processed: %d, Activities saved: %d' % (activities_processed, activities_saved))
