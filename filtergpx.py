@@ -223,7 +223,7 @@ def process_gpx(activity_id, gpx_xml):
     points_written = 0
     max_distance = 0
     separation = 0
-    split_time = timedelta(0, 0, 0)
+#    split_time = timedelta(0, 0, 0)
     split_csv = split_csv_header
     output_gpx = set_up_gpx()
 
@@ -246,7 +246,7 @@ def process_gpx(activity_id, gpx_xml):
                         farthest_point = point
                 else:
                     # First time, add first point
-                    start_point = point
+                    start_point = split_start_point = point
                     add_gps_point(output_gpx, start_point)
 
                 previous_point = point
@@ -261,6 +261,7 @@ def process_gpx(activity_id, gpx_xml):
 
                 # If we have completed a split, write a csv record
                 if split_distance > SPLIT:
+                    split_time = point.time - split_start_point.time
                     pace = get_pace(split_time.seconds, split_distance)
                     # Pace output as decimal minutes and MM:SS
                     split_csv += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
@@ -272,6 +273,7 @@ def process_gpx(activity_id, gpx_xml):
                                                   int(pace), (pace % 1 * 60))
                     # Reset for next split - don't set distance to 0 to avoid cumulative errors
                     split_distance -= SPLIT
+                    split_start_point = point
 
     # Save everything, but only if we actually have some data
     if points_written != 0:
