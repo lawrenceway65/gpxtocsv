@@ -18,7 +18,7 @@ for entry in os.scandir(Path):
     if (entry.path.endswith(".gpx")):
         with open(entry.path, 'r') as input_file:
             filtergpx.process_gpx(os.path.basename(entry.path).replace('.gpx', ''), input_file.read())
-        print("%s processed" % entry.path)
+#        print("%s processed" % entry.path)
         files_processed += 1
 
 print('%d files processed' % files_processed)
