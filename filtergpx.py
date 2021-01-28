@@ -37,7 +37,7 @@ split_csv_format_string = '%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 metadata_csv_name_format_string = '%sImport%sProcessGPX_%s.csv'
 metadata_csv_header = 'Date,Time,Activity,Garmin ID,Distance,Duration,Location\n'
 
-def get_output_path(activity='', year=0):
+def get_output_path(activity='', year=''):
     """
     Get path for output files.
     Creates any folders that don't already exist.
@@ -169,16 +169,6 @@ def get_locality_string(start_point, end_point, farthest_point):
             return start_locality + farthest_locality
     else:
         return start_locality + end_locality
-
-
-def open_metadata_file():
-    """Open metadata csv file and write header"""
-    # Filename ProcessGPX_YY-MM-DD_HHMM.csv
-    csv_file = io.open('%sImport%sProcessGPX_%s.csv' % (get_output_path(), os.sep, datetime.now().strftime("%d-%m-%Y_%H%M")),
-        'w', encoding='utf-8')
-    csv_file.write('Date,Time,Activity,Garmin ID,Distance,Duration,Location\n')
-
-    return csv_file
 
 
 def set_up_gpx():
