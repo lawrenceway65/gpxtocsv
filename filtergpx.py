@@ -101,6 +101,52 @@ def get_pace(time, distance):
     return time / 60 * MILE / distance
 
 
+class Splits:
+    """Manages calculation and saving of split data"""
+    def __init__(self, point):
+        """"""
+        self.start_point = point
+        self.split_distance = 0
+        self.csv_data = split_csv_header
+
+    def __enter__(self):
+        """To allow use of 'with'."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """"To allow use of 'with'."""
+        pass
+
+    def __del__(self):
+        """"""
+        pass
+
+    def process_point(self, point, distance, total_distance):
+        """Increment distance, if complete split, write csv data and reset for next split"""
+        self.split_distance += distance
+        if self.split_distance >= SPLIT:
+            split_time = point.time - self.start_point.time
+            pace = get_pace(split_time.seconds, self.split_distance)
+            # Pace output as decimal minutes and MM:SS
+            self.csv_data += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
+                                                        split_time,
+                                                        self.split_distance,
+                                                        point.time - self.start_point.time,
+                                                        total_distance,
+                                                        pace,
+                                                        int(pace),
+                                                        (pace % 1 * 60))
+            # Reset for next split - don't set distance to 0 to avoid cumulative errors
+            self.split_distance -= SPLIT
+            self.start_point = point
+
+        return
+
+    def get_csv_data(self):
+
+        return self.csv_data
+
+
 def get_activity_type(time, distance):
     """Calculate pace (min/mile) and return matching activity.
     """
@@ -263,8 +309,9 @@ def process_gpx(activity_id, gpx_xml):
                 if point_count > 1:
                     # Distance from last point
                     incremental_distance = calculate_distance(previous_point, point)
-                    split_distance += incremental_distance
                     separation += incremental_distance
+                    total_distance += incremental_distance
+                    split_tracker.process_point(point, incremental_distance, total_distance)
 
                     # Straight line distance from start point
                     distance_from_start = calculate_distance(start_point, point)
@@ -273,7 +320,8 @@ def process_gpx(activity_id, gpx_xml):
                         farthest_point = point
                 else:
                     # First time, add first point
-                    start_point = split_start_point = point
+                    start_point = point
+                    split_tracker = Splits(point)
                     add_gps_point(output_gpx, start_point)
 
                 previous_point = point
@@ -283,24 +331,7 @@ def process_gpx(activity_id, gpx_xml):
                     # Add to track and reset
                     add_gps_point(output_gpx, point)
                     points_written += 1
-                    total_distance += separation
                     separation = 0
-
-                # If we have completed a split, write a csv record
-                if split_distance > SPLIT:
-                    split_time = point.time - split_start_point.time
-                    pace = get_pace(split_time.seconds, split_distance)
-                    # Pace output as decimal minutes and MM:SS
-                    split_csv += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
-                                                  split_time,
-                                                  split_distance,
-                                                  point.time - start_point.time,
-                                                  total_distance,
-                                                  pace,
-                                                  int(pace), (pace % 1 * 60))
-                    # Reset for next split - don't set distance to 0 to avoid cumulative errors
-                    split_distance -= SPLIT
-                    split_start_point = point
 
     # Save everything, but only if we actually have some data
     if points_written != 0:
@@ -311,7 +342,7 @@ def process_gpx(activity_id, gpx_xml):
                            total_distance,
                            points_written,
                            output_gpx,
-                           split_csv)
+                           split_tracker.get_csv_data())
 
     return
 
