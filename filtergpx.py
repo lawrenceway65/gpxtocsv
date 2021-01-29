@@ -101,24 +101,66 @@ def get_pace(time, distance):
     return time / 60 * MILE / distance
 
 
+class GPXData:
+    """"""
+    def __init__(self):
+        """Set up GPX"""
+#        self.start_point = None
+        self.separation = 0
+        self.points_written = 0
+
+        self.gpx = gpxpy.gpx.GPX()
+        # Create track
+        track = gpxpy.gpx.GPXTrack()
+        self.gpx.tracks.append(track)
+        # Create segment
+        segment = gpxpy.gpx.GPXTrackSegment()
+        track.segments.append(segment)
+
+        return
+
+
+    def __del__(self):
+        """Nothing required."""
+        pass
+
+    def process_point(self, point, distance):
+        """Increment distance, if complete split, write csv data and reset for next split"""
+        self.separation += distance
+        if self.separation >= MINPOINTSEPARATION:
+            # Create new point and add it
+            new_point = gpxpy.gpx.GPXTrackPoint()
+            new_point.latitude = point.latitude
+            new_point.longitude = point.longitude
+            new_point.time = point.time
+            new_point.elevation = point.elevation
+            # Only ever single track and segment
+            self.gpx.tracks[0].segments[0].points.append(new_point)
+            self.points_written += 1
+            # Reset distance
+            self.separation = 0
+
+            return
+
+    def get_points_written(self):
+        return self.points_written
+
+    def get_gpx_data(self):
+        return self.gpx
+
+
 class Splits:
-    """Manages calculation and saving of split data"""
+    """Manages calculation and saving of split data
+    Initialised with first point, called for each point and adds csv data for splits.
+    """
     def __init__(self, point):
         """"""
         self.start_point = point
         self.split_distance = 0
         self.csv_data = split_csv_header
 
-    def __enter__(self):
-        """To allow use of 'with'."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """"To allow use of 'with'."""
-        pass
-
     def __del__(self):
-        """"""
+        """Nothing required."""
         pass
 
     def process_point(self, point, distance, total_distance):
@@ -173,19 +215,6 @@ def calculate_distance(point1, point2):
     return distance(coord1, coord2).meters
 
 
-def add_gps_point(gpx_track, point):
-    """Create new point and add to track."""
-    new_point = gpxpy.gpx.GPXTrackPoint()
-    new_point.latitude = point.latitude
-    new_point.longitude = point.longitude
-    new_point.time = point.time
-    new_point.elevation = point.elevation
-    # Only ever single track and segment
-    gpx_track.tracks[0].segments[0].points.append(new_point)
-
-    return
-
-
 def get_locality(latitude, longitude):
     """Get location from co-ordinates. Use Open Street Map.
     Using street level (zoom = 16) and picking second item, gives more accurate result
@@ -217,19 +246,6 @@ def get_locality_string(start_point, end_point, farthest_point):
             return start_locality + farthest_locality
     else:
         return start_locality + end_locality
-
-
-def set_up_gpx():
-    """Setup GPX - always one track and one segment"""
-    gpx = gpxpy.gpx.GPX()
-    # Create track
-    track = gpxpy.gpx.GPXTrack()
-    gpx.tracks.append(track)
-    # Create segment
-    segment = gpxpy.gpx.GPXTrackSegment()
-    track.segments.append(segment)
-
-    return gpx
 
 
 def save_activity_data(activity_id, start_point, end_point, farthest_point, distance, point_count, gpx_data, split_data):
@@ -294,11 +310,11 @@ def process_gpx(activity_id, gpx_xml):
     point_count = 0
     total_distance = 0
     split_distance = 0
-    points_written = 0
+#    points_written = 0
     max_distance = 0
     separation = 0
     split_csv = split_csv_header
-    output_gpx = set_up_gpx()
+    output_gpx = GPXData()
 
     # Parse to gpx and iterate through
     input_gpx = gpxpy.parse(gpx_xml)
@@ -311,7 +327,10 @@ def process_gpx(activity_id, gpx_xml):
                     incremental_distance = calculate_distance(previous_point, point)
                     separation += incremental_distance
                     total_distance += incremental_distance
+                    # Manage split
                     split_tracker.process_point(point, incremental_distance, total_distance)
+                    # Manage gpx
+                    output_gpx.process_point(point, incremental_distance)
 
                     # Straight line distance from start point
                     distance_from_start = calculate_distance(start_point, point)
@@ -319,29 +338,21 @@ def process_gpx(activity_id, gpx_xml):
                         max_distance = distance_from_start
                         farthest_point = point
                 else:
-                    # First time, add first point
+                    # First time, set things up
                     start_point = point
                     split_tracker = Splits(point)
-                    add_gps_point(output_gpx, start_point)
 
                 previous_point = point
 
-                # If we have we moved 5m, add next point
-                if separation >= MINPOINTSEPARATION:
-                    # Add to track and reset
-                    add_gps_point(output_gpx, point)
-                    points_written += 1
-                    separation = 0
-
     # Save everything, but only if we actually have some data
-    if points_written != 0:
+    if output_gpx.get_points_written() != 0:
         save_activity_data(activity_id,
                            start_point,
                            point,
                            farthest_point,
                            total_distance,
-                           points_written,
-                           output_gpx,
+                           output_gpx.get_points_written(),
+                           output_gpx.get_gpx_data(),
                            split_tracker.get_csv_data())
 
     return
