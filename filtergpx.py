@@ -185,8 +185,8 @@ def set_up_gpx():
 
 
 def save_activity_data(activity_id, start_point, end_point, farthest_point, distance, point_count, gpx_data, split_data):
-    """Save associated data
-    Generate filename, save gpx data, save split data, save meta data
+    """Save associated data.
+    Generate filename, save gpx data, save split data, save meta data.
 
     :param activity_id: identifier of original file
     :param start_point: start - with next two params, used to generate location string
@@ -249,7 +249,6 @@ def process_gpx(activity_id, gpx_xml):
     points_written = 0
     max_distance = 0
     separation = 0
-#    split_time = timedelta(0, 0, 0)
     split_csv = split_csv_header
     output_gpx = set_up_gpx()
 
