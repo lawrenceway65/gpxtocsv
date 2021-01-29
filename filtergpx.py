@@ -105,7 +105,6 @@ class GPXData:
     """"""
     def __init__(self):
         """Set up GPX"""
-#        self.start_point = None
         self.separation = 0
         self.points_written = 0
 
@@ -118,7 +117,6 @@ class GPXData:
         track.segments.append(segment)
 
         return
-
 
     def __del__(self):
         """Nothing required."""
@@ -142,11 +140,10 @@ class GPXData:
 
             return
 
-    def get_points_written(self):
-        return self.points_written
-
-    def get_gpx_data(self):
-        return self.gpx
+    def write(self, filename):
+        """Write to file"""
+        with open(filename + '.gpx', 'w') as gpx_file:
+            gpx_file.write(self.gpx.to_xml())
 
 
 class Splits:
@@ -184,15 +181,36 @@ class Splits:
 
         return
 
-    def get_csv_data(self):
+    def write(self, filename):
+        """Write to file"""
+        with open(filename + '.csv', 'w') as file:
+            file.write(self.csv_data)
 
-        return self.csv_data
+
+class TrackLocations:
+    def __init__(self, point):
+        self.start_point = point
+        self.max_distance = 0
+
+        return
+
+    def process_point(self, point):
+        self.last_point = point
+        distance_from_start = calculate_distance(self.start_point, point)
+        if  distance_from_start > self.max_distance:
+            self.max_distance = distance_from_start
+            self.farthest_point = point
+
+        return
 
 
-def get_activity_type(time, distance):
+def get_activity_type(location_data, distance):
     """Calculate pace (min/mile) and return matching activity.
+    :type location_data: TrackLocations
+    :type distance: float
     """
-    pace = get_pace(time, distance)
+    time = location_data.last_point.time - location_data.start_point.time
+    pace = get_pace(time.seconds, distance)
     if pace > 12:
         activity = 'Hike'
     elif pace > 7:
@@ -291,6 +309,30 @@ def save_activity_data(activity_id, start_point, end_point, farthest_point, dist
     return
 
 
+def get_output_filename(location_data, distance, activity_type):
+    """Save associated data.
+    Generate filename, save gpx data, save split data, save meta data.
+
+    :param location_data: start - with next two params, used to generate location string
+    :type location_data: TrackLocations
+    :param distance: activity total distance
+    :type distance: float
+    :type activity_type: str
+    """
+    # Path / filename for gpx and split csv
+    location = get_locality_string(location_data.start_point,
+                                   location_data.last_point,
+                                   location_data.farthest_point)
+    output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, location_data.start_point.time.strftime('%Y')),
+                                                activity_type,
+                                                time.strftime('%Y-%m-%d_%H%M', time.localtime(location_data.start_point.time.timestamp())),
+                                                (distance / MILE),
+                                                location)
+
+    return output_filename
+
+
+
 def process_gpx(activity_id, gpx_xml):
     """Process gpx data as follows:
     Filter gpx to only include points with >=5m separation and basic data only (lat, long, time, elev)
@@ -309,11 +351,6 @@ def process_gpx(activity_id, gpx_xml):
     # Variables
     point_count = 0
     total_distance = 0
-    split_distance = 0
-#    points_written = 0
-    max_distance = 0
-    separation = 0
-    split_csv = split_csv_header
     output_gpx = GPXData()
 
     # Parse to gpx and iterate through
@@ -325,35 +362,48 @@ def process_gpx(activity_id, gpx_xml):
                 if point_count > 1:
                     # Distance from last point
                     incremental_distance = calculate_distance(previous_point, point)
-                    separation += incremental_distance
                     total_distance += incremental_distance
                     # Manage split
                     split_tracker.process_point(point, incremental_distance, total_distance)
                     # Manage gpx
                     output_gpx.process_point(point, incremental_distance)
-
-                    # Straight line distance from start point
-                    distance_from_start = calculate_distance(start_point, point)
-                    if distance_from_start > max_distance:
-                        max_distance = distance_from_start
-                        farthest_point = point
+                    # Manage locations
+                    location_tracker.process_point(point)
                 else:
                     # First time, set things up
-                    start_point = point
                     split_tracker = Splits(point)
+                    location_tracker = TrackLocations(point)
 
                 previous_point = point
 
     # Save everything, but only if we actually have some data
-    if output_gpx.get_points_written() != 0:
-        save_activity_data(activity_id,
-                           start_point,
-                           point,
-                           farthest_point,
-                           total_distance,
-                           output_gpx.get_points_written(),
-                           output_gpx.get_gpx_data(),
-                           split_tracker.get_csv_data())
+    if output_gpx.points_written != 0:
+        activity_type = get_activity_type(location_tracker, total_distance)
+        output_filename = get_output_filename(location_tracker, total_distance, activity_type)
+
+        if activity_type == 'Run' or activity_type == 'Cycle':
+            split_tracker.write(output_filename)
+        output_gpx.write(output_filename)
+
+        # # Write metadata to csv
+        # metadata_csv.write('%s,%s,activity_%s,%d,%s,%s\n' % (
+        # time.strftime('%Y-%m-%d, %H:%M', time.localtime(location_tracker.start_point.time.timestamp())),
+        # activity_type,
+        # activity_id,
+        # total_distance,
+        # location_tracker.last_point.time - location_tracker.start_point.time,
+        # location))
+
+        print('%s trackpoints written to %s' % (point_count, output_filename))
+
+        # save_activity_data(activity_id,
+        #                    location_tracker.start_point,
+        #                    location_tracker.last_point,
+        #                    location_tracker.farthest_point,
+        #                    total_distance,
+        #                    output_gpx.points_written,
+        #                    output_gpx.gpx,
+        #                    split_tracker.csv_data)
 
     return
 
@@ -361,8 +411,6 @@ def process_gpx(activity_id, gpx_xml):
 metadata_csv = MetadataCSV()
 
 if __name__ == "__main__":
-
-
     # Don't necessarily want to download everything
     max_activities = config.max_activities
 
