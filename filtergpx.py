@@ -73,7 +73,7 @@ class MetadataCSV:
                                                                         datetime.now().strftime("%d-%m-%Y_%H%M"))
 
     def __enter__(self):
-        """To allow use of with."""
+        """To allow use of 'with'."""
         return self
 
     def write(self, s):
@@ -87,9 +87,11 @@ class MetadataCSV:
         self.lines_written += 1
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """"To allow use of 'with'."""
         pass
 
     def __del__(self):
+        """File will only need closing if lines have been written."""
         if self.lines_written > 0:
             self.file.close()
 
