@@ -76,7 +76,7 @@ class MetadataCSV:
         """To allow use of 'with'."""
         return self
 
-    def write(self, activity_id, activity_type, distance, location_data, location):
+    def write(self, activity_id, activity_type, distance, location_data):
         """Writes line to file.
         If nothing written yet create the file and write header
         :type activity_id: str
@@ -87,16 +87,16 @@ class MetadataCSV:
         if self.lines_written == 0:
             self.file = io.open(self.metadata_csv_filename, 'w', encoding='utf-8')
             self.file.write(metadata_csv_header)
-
         s = ('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(location_data.start_point.time.timestamp())),
                                                              activity_type,
                                                              activity_id,
                                                              distance,
                                                              location_data.last_point.time - location_data.start_point.time,
-                                                             location))
+                                                             location_data.get_locality_string()))
         self.file.write(s)
         self.lines_written += 1
 
+        return
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """"To allow use of 'with'."""
@@ -203,8 +203,7 @@ class TrackLocations:
     def __init__(self, point):
         self.start_point = point
         self.max_distance = 0
-
-        return
+        self.locality_string = ''
 
     def process_point(self, point):
         self.last_point = point
@@ -213,7 +212,27 @@ class TrackLocations:
             self.max_distance = distance_from_start
             self.farthest_point = point
 
-        return
+    def get_locality_string(self):
+        """Returns human readable location info
+        If we already have it just return it.
+        """
+        if self.locality_string == '':
+            # Get info for start/end/farthest - remove any spaces, don't want them in filename
+            start_locality = get_locality(self.start_point.latitude, self.start_point.longitude).replace(' ', '')
+            end_locality = get_locality(self.last_point.latitude, self.last_point.longitude).replace(' ', '')
+            farthest_locality = get_locality(self.farthest_point.latitude, self.farthest_point.longitude).replace(' ', '')
+            # print('Start: %s, End: %s, Farthest: %s' % (start_town, end_town, farthest_town))
+
+            # Might have been circular, in which case use farthest. Avoid repetition if all the same.
+            if start_locality == end_locality:
+                if end_locality == farthest_locality:
+                    self.locality_string = start_locality
+                else:
+                    self.locality_string = start_locality + farthest_locality
+            else:
+                self.locality_string = start_locality + end_locality
+
+        return self.locality_string
 
 
 def get_activity_type(location_data, distance):
@@ -256,26 +275,6 @@ def get_locality(latitude, longitude):
 
     # Extract second item from 'display_name'
     return re.split(',', result_json['display_name'])[1]
-
-
-def get_locality_string(start_point, end_point, farthest_point):
-    """Get location string for filename
-    Default is: <start><end>
-    """
-    # Start/end - remove any spaces, don't want them in filename
-    start_locality = get_locality(start_point.latitude, start_point.longitude).replace(' ', '')
-    end_locality = get_locality(end_point.latitude, end_point.longitude).replace(' ', '')
-    farthest_locality = get_locality(farthest_point.latitude, farthest_point.longitude).replace(' ', '')
-#    print('Start: %s, End: %s, Farthest: %s' % (start_town, end_town, farthest_town))
-
-    # Might have been circular, in which case use farthest. Avoid repetition if all the same.
-    if start_locality == end_locality:
-        if end_locality == farthest_locality:
-            return start_locality
-        else:
-            return start_locality + farthest_locality
-    else:
-        return start_locality + end_locality
 
 
 def process_gpx(activity_id, gpx_xml):
@@ -324,20 +323,17 @@ def process_gpx(activity_id, gpx_xml):
     # Save everything, but only if we actually have some data
     if output_gpx.points_written != 0:
         activity_type = get_activity_type(location_tracker, total_distance)
-        location = get_locality_string(location_tracker.start_point,
-                                       location_tracker.last_point,
-                                       location_tracker.farthest_point)
         output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, location_tracker.start_point.time.strftime('%Y')),
                                                  activity_type,
                                                  time.strftime('%Y-%m-%d_%H%M', time.localtime(location_tracker.start_point.time.timestamp())),
                                                  (total_distance / MILE),
-                                                 location)
+                                                 location_tracker.get_locality_string())
 
         if activity_type == 'Run' or activity_type == 'Cycle':
             split_tracker.write(output_filename)
         output_gpx.write(output_filename)
         # Write metadata to csv
-        metadata_csv.write(activity_id, activity_type, total_distance, location_tracker, location)
+        metadata_csv.write(activity_id, activity_type, total_distance, location_tracker)
 
         print('%s trackpoints written to %s' % (point_count, output_filename))
 
