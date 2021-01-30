@@ -205,7 +205,8 @@ class TrackData:
         self.max_distance = 0
         # Total distance covered
         self.track_distance = 0
-        self.locality_string = ''
+        # Private - always get via call
+        self._locality_string = ''
 
     def process_point(self, point, incremental_distance):
         self.track_distance += incremental_distance
@@ -220,7 +221,7 @@ class TrackData:
         """Returns human readable location info
         If we already have it just return it.
         """
-        if self.locality_string == '':
+        if self._locality_string == '':
             # Get info for start/end/farthest - remove any spaces, don't want them in filename
             start_locality = get_locality(self.start_point.latitude, self.start_point.longitude).replace(' ', '')
             end_locality = get_locality(self.last_point.latitude, self.last_point.longitude).replace(' ', '')
@@ -230,13 +231,13 @@ class TrackData:
             # Might have been circular, in which case use farthest. Avoid repetition if all the same.
             if start_locality == end_locality:
                 if end_locality == farthest_locality:
-                    self.locality_string = start_locality
+                    self._locality_string = start_locality
                 else:
-                    self.locality_string = start_locality + farthest_locality
+                    self._locality_string = start_locality + farthest_locality
             else:
-                self.locality_string = start_locality + end_locality
+                self._locality_string = start_locality + end_locality
 
-        return self.locality_string
+        return self._locality_string
 
 
 def get_activity_type(track):
