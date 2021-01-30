@@ -76,23 +76,22 @@ class MetadataCSV:
         """To allow use of 'with'."""
         return self
 
-    def write(self, activity_id, activity_type, distance, location_data):
+    def write(self, activity_id, activity_type, track):
         """Writes line to file.
         If nothing written yet create the file and write header
         :type activity_id: str
         :type activity_type: str
-        :type distance: float
-        :type location_data: TrackLocations
+        :type track: TrackData
         """
         if self.lines_written == 0:
             self.file = io.open(self.metadata_csv_filename, 'w', encoding='utf-8')
             self.file.write(metadata_csv_header)
-        s = ('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(location_data.start_point.time.timestamp())),
+        s = ('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(track.start_point.time.timestamp())),
                                                              activity_type,
                                                              activity_id,
-                                                             distance,
-                                                             location_data.last_point.time - location_data.start_point.time,
-                                                             location_data.get_locality_string()))
+                                                             track.track_distance,
+                                                             track.last_point.time - track.start_point.time,
+                                                             track.get_locality_string()))
         self.file.write(s)
         self.lines_written += 1
 
@@ -199,18 +198,23 @@ class Splits:
             file.write(self.csv_data)
 
 
-class TrackLocations:
+class TrackData:
     def __init__(self, point):
         self.start_point = point
+        # Farthest straight line distance from start
         self.max_distance = 0
+        # Total distance covered
+        self.track_distance = 0
         self.locality_string = ''
 
-    def process_point(self, point):
+    def process_point(self, point, incremental_distance):
+        self.track_distance += incremental_distance
         self.last_point = point
         distance_from_start = calculate_distance(self.start_point, point)
-        if  distance_from_start > self.max_distance:
+        if distance_from_start > self.max_distance:
             self.max_distance = distance_from_start
             self.farthest_point = point
+
 
     def get_locality_string(self):
         """Returns human readable location info
@@ -235,13 +239,12 @@ class TrackLocations:
         return self.locality_string
 
 
-def get_activity_type(location_data, distance):
+def get_activity_type(track):
     """Calculate pace (min/mile) and return matching activity.
-    :type location_data: TrackLocations
-    :type distance: float
+    :type track: TrackData
     """
-    time = location_data.last_point.time - location_data.start_point.time
-    pace = get_pace(time.seconds, distance)
+    time = track.last_point.time - track.start_point.time
+    pace = get_pace(time.seconds, track.track_distance)
     if pace > 12:
         activity = 'Hike'
     elif pace > 7:
@@ -312,28 +315,28 @@ def process_gpx(activity_id, gpx_xml):
                     # Manage gpx
                     output_gpx.process_point(point, incremental_distance)
                     # Manage locations
-                    location_tracker.process_point(point)
+                    track_data.process_point(point, incremental_distance)
                 else:
                     # First time, set things up
                     split_tracker = Splits(point)
-                    location_tracker = TrackLocations(point)
+                    track_data = TrackData(point)
 
                 previous_point = point
 
     # Save everything, but only if we actually have some data
     if output_gpx.points_written != 0:
-        activity_type = get_activity_type(location_tracker, total_distance)
-        output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, location_tracker.start_point.time.strftime('%Y')),
+        activity_type = get_activity_type(track_data)
+        output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, track_data.start_point.time.strftime('%Y')),
                                                  activity_type,
-                                                 time.strftime('%Y-%m-%d_%H%M', time.localtime(location_tracker.start_point.time.timestamp())),
-                                                 (total_distance / MILE),
-                                                 location_tracker.get_locality_string())
+                                                 time.strftime('%Y-%m-%d_%H%M', time.localtime(track_data.start_point.time.timestamp())),
+                                                 (track_data.track_distance / MILE),
+                                                 track_data.get_locality_string())
 
         if activity_type == 'Run' or activity_type == 'Cycle':
             split_tracker.write(output_filename)
         output_gpx.write(output_filename)
         # Write metadata to csv
-        metadata_csv.write(activity_id, activity_type, total_distance, location_tracker)
+        metadata_csv.write(activity_id, activity_type, track_data)
 
         print('%s trackpoints written to %s' % (point_count, output_filename))
 
