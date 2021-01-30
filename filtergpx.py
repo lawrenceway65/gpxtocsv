@@ -349,7 +349,7 @@ if __name__ == "__main__":
     # Don't necessarily want to download everything
     max_activities = config.max_activities
 
-    activities_saved = activities_processed = 0
+    activities_saved = activities_checked = 0
     with GarminClient(garmincredential.username, garmincredential.password) as client:
         # By default download last five activities
         ids = client.list_activities()
@@ -358,9 +358,7 @@ if __name__ == "__main__":
     #        print(output_file)
 
             # Only save and process if file not already saved from previous download
-            if os.path.isfile(output_file):
-                print("activity_%d already downloaded" % activity_id[0])
-            else:
+            if not os.path.isfile(output_file):
                 # Download and process the gpx file
                 gpx = client.get_activity_gpx(activity_id[0])
                 process_gpx('%d' % activity_id[0], gpx)
@@ -370,11 +368,11 @@ if __name__ == "__main__":
                 raw_gpx_file.close()
     #            print('Saved activity_%d.gpx' % (activity_id[0]))
                 activities_saved += 1
-            activities_processed += 1
+            activities_checked += 1
 
             # Drop out if limit reached
-            if activities_processed >= max_activities:
+            if activities_checked >= max_activities:
                 break
 
 #    MetaDataCSV.close()
-    print('Activities processed: %d, Activities saved: %d' % (activities_processed, activities_saved))
+    print('Activities checked: %d, Activities saved: %d' % (activities_checked, activities_saved))
