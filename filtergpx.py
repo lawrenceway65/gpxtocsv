@@ -76,15 +76,27 @@ class MetadataCSV:
         """To allow use of 'with'."""
         return self
 
-    def write(self, s):
+    def write(self, activity_id, activity_type, distance, location_data, location):
         """Writes line to file.
         If nothing written yet create the file and write header
+        :type activity_id: str
+        :type activity_type: str
+        :type distance: float
+        :type location_data: TrackLocations
         """
         if self.lines_written == 0:
             self.file = io.open(self.metadata_csv_filename, 'w', encoding='utf-8')
             self.file.write(metadata_csv_header)
+
+        s = ('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(location_data.start_point.time.timestamp())),
+                                                             activity_type,
+                                                             activity_id,
+                                                             distance,
+                                                             location_data.last_point.time - location_data.start_point.time,
+                                                             location))
         self.file.write(s)
         self.lines_written += 1
+
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """"To allow use of 'with'."""
@@ -266,64 +278,6 @@ def get_locality_string(start_point, end_point, farthest_point):
         return start_locality + end_locality
 
 
-def save_activity_data(activity_id, start_point, end_point, farthest_point, distance, point_count, gpx_data, split_data):
-    """Save associated data.
-    Generate filename, save gpx data, save split data, save meta data.
-
-    :param activity_id: identifier of original file
-    :param start_point: start - with next two params, used to generate location string
-    :param end_point: end
-    :param farthest_point: farthest
-    :param distance: activity total distance
-    :param point_count: number of gpx points to write (for info)
-    :param gpx_data: gpx xml to write
-    :param split_data: csv split data
-    """
-    # Path / filename for gpx and split csv
-    activity_type = get_activity_type((end_point.time-start_point.time).seconds, distance)
-    location = get_locality_string(start_point, end_point, farthest_point)
-    output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, start_point.time.strftime('%Y')),
-                                                activity_type,
-                                                time.strftime('%Y-%m-%d_%H%M', time.localtime(start_point.time.timestamp())),
-                                                (distance / MILE),
-                                                location)
-    # Write gpx track
-    with open(output_filename + '.gpx', 'w') as gpx_file:
-        gpx_file.write(gpx_data.to_xml())
-
-    # Write split csv data only for run and cycle
-    if activity_type == 'Run' or activity_type == 'Cycle':
-        with open(output_filename + '.csv', 'w') as csv_file:
-            csv_file.write(split_data)
-
-    # Write metadata to csv
-    metadata_csv.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(start_point.time.timestamp())),
-                                                   activity_type,
-                                                   activity_id,
-                                                   distance,
-                                                   end_point.time - start_point.time,
-                                                   location))
-
-    print('%s trackpoints written to %s' % (point_count, output_filename))
-
-    return
-
-
-def get_output_filename(location_data, distance, activity_type):
-    """Save associated data.
-    Generate filename, save gpx data, save split data, save meta data.
-
-    :param location_data: start - with next two params, used to generate location string
-    :type location_data: TrackLocations
-    :param distance: activity total distance
-    :type distance: float
-    :type activity_type: str
-    """
-
-    return output_filename
-
-
-
 def process_gpx(activity_id, gpx_xml):
     """Process gpx data as follows:
     Filter gpx to only include points with >=5m separation and basic data only (lat, long, time, elev)
@@ -382,26 +336,10 @@ def process_gpx(activity_id, gpx_xml):
         if activity_type == 'Run' or activity_type == 'Cycle':
             split_tracker.write(output_filename)
         output_gpx.write(output_filename)
-
         # Write metadata to csv
-        # Path / filename for gpx and split csv
-        metadata_csv.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(location_tracker.start_point.time.timestamp())),
-                                                             activity_type,
-                                                             activity_id,
-                                                             total_distance,
-                                                             location_tracker.last_point.time - location_tracker.start_point.time,
-                                                             location))
+        metadata_csv.write(activity_id, activity_type, total_distance, location_tracker, location)
 
         print('%s trackpoints written to %s' % (point_count, output_filename))
-
-        # save_activity_data(activity_id,
-        #                    location_tracker.start_point,
-        #                    location_tracker.last_point,
-        #                    location_tracker.farthest_point,
-        #                    total_distance,
-        #                    output_gpx.points_written,
-        #                    output_gpx.gpx,
-        #                    split_tracker.csv_data)
 
     return
 
