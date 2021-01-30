@@ -319,15 +319,6 @@ def get_output_filename(location_data, distance, activity_type):
     :type distance: float
     :type activity_type: str
     """
-    # Path / filename for gpx and split csv
-    location = get_locality_string(location_data.start_point,
-                                   location_data.last_point,
-                                   location_data.farthest_point)
-    output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, location_data.start_point.time.strftime('%Y')),
-                                                activity_type,
-                                                time.strftime('%Y-%m-%d_%H%M', time.localtime(location_data.start_point.time.timestamp())),
-                                                (distance / MILE),
-                                                location)
 
     return output_filename
 
@@ -379,20 +370,27 @@ def process_gpx(activity_id, gpx_xml):
     # Save everything, but only if we actually have some data
     if output_gpx.points_written != 0:
         activity_type = get_activity_type(location_tracker, total_distance)
-        output_filename = get_output_filename(location_tracker, total_distance, activity_type)
+        location = get_locality_string(location_tracker.start_point,
+                                       location_tracker.last_point,
+                                       location_tracker.farthest_point)
+        output_filename = '%s%s_%s_%dMile_%s' % (get_output_path(activity_type, location_tracker.start_point.time.strftime('%Y')),
+                                                 activity_type,
+                                                 time.strftime('%Y-%m-%d_%H%M', time.localtime(location_tracker.start_point.time.timestamp())),
+                                                 (total_distance / MILE),
+                                                 location)
 
         if activity_type == 'Run' or activity_type == 'Cycle':
             split_tracker.write(output_filename)
         output_gpx.write(output_filename)
 
-        # # Write metadata to csv
-        # metadata_csv.write('%s,%s,activity_%s,%d,%s,%s\n' % (
-        # time.strftime('%Y-%m-%d, %H:%M', time.localtime(location_tracker.start_point.time.timestamp())),
-        # activity_type,
-        # activity_id,
-        # total_distance,
-        # location_tracker.last_point.time - location_tracker.start_point.time,
-        # location))
+        # Write metadata to csv
+        # Path / filename for gpx and split csv
+        metadata_csv.write('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(location_tracker.start_point.time.timestamp())),
+                                                             activity_type,
+                                                             activity_id,
+                                                             total_distance,
+                                                             location_tracker.last_point.time - location_tracker.start_point.time,
+                                                             location))
 
         print('%s trackpoints written to %s' % (point_count, output_filename))
 
