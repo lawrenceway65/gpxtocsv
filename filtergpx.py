@@ -353,7 +353,8 @@ if __name__ == "__main__":
     activities_saved = activities_checked = 0
     with GarminClient(garmincredential.username, garmincredential.password) as client:
         # By default download last five activities
-        ids = client.list_activities()
+        print('Getting activity list')
+        ids = client.list_activities(max_activities)
         for activity_id in ids:
             output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id[0])
     #        print(output_file)
@@ -371,9 +372,4 @@ if __name__ == "__main__":
                 activities_saved += 1
             activities_checked += 1
 
-            # Drop out if limit reached
-            if activities_checked >= max_activities:
-                break
-
-#    MetaDataCSV.close()
     print('Activities checked: %d, Activities saved: %d' % (activities_checked, activities_saved))
