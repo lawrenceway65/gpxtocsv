@@ -292,7 +292,7 @@ def process_gpx(activity_id, gpx_xml):
     Add row of metadata for activity
 
     :param activity_id: id of activity (eg garmin id or other identifier)
-    :type activity_id: string
+    :type activity_id: str
     :param gpx_xml: gpx data
     :type gpx_xml: xml
     """
@@ -315,7 +315,7 @@ def process_gpx(activity_id, gpx_xml):
                     split_tracker.process_point(point, incremental_distance, total_distance)
                     # Manage gpx
                     output_gpx.process_point(point, incremental_distance)
-                    # Manage locations
+                    # Manage data
                     track_data.process_point(point, incremental_distance)
                 else:
                     # First time, set things up
@@ -353,7 +353,7 @@ if __name__ == "__main__":
     activities_saved = activities_checked = 0
     with GarminClient(garmincredential.username, garmincredential.password) as client:
         # By default download last five activities
-        print('Getting activity list')
+        print('Getting activity list from Garmin')
         ids = client.list_activities(max_activities)
         for activity_id in ids:
             output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id[0])
