@@ -17,11 +17,16 @@ import time
 import os
 import subprocess
 import json
-from garminexport.garminclient import GarminClient
 import re
 import io
 import garmincredential
 import config
+from garminconnect import (
+    Garmin,
+    GarminConnectConnectionError,
+    GarminConnectTooManyRequestsError,
+    GarminConnectAuthenticationError,
+)
 
 
 # Constants and definitions
@@ -349,27 +354,38 @@ metadata_csv = MetadataCSV()
 if __name__ == "__main__":
     # Don't necessarily want to download everything
     max_activities = config.max_activities
+    activities_saved = 0
 
-    activities_saved = activities_checked = 0
-    with GarminClient(garmincredential.username, garmincredential.password) as client:
-        # By default download last five activities
-        print('Getting activity list from Garmin')
-        ids = client.list_activities(max_activities)
-        for activity_id in ids:
-            output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id[0])
-    #        print(output_file)
+    print("Download activities from Garmin Connect.")
+    try:
+        client = Garmin(garmincredential.username, garmincredential.password)
+        client.login()
+        activities = client.get_activities(0, max_activities)  # 0=start, 1=limit
+    except (
+            GarminConnectConnectionError,
+            GarminConnectAuthenticationError,
+            GarminConnectTooManyRequestsError,
+    ) as err:
+        print("Error occurred during Garmin Connect Client init: %s" % err)
+        quit()
+    except Exception:  # pylint: disable=broad-except
+        print("Unknown error occurred during Garmin Connect Client init")
+        quit()
 
-            # Only save and process if file not already saved from previous download
-            if not os.path.isfile(output_file):
-                # Download and process the gpx file
-                gpx = client.get_activity_gpx(activity_id[0])
-                process_gpx('%d' % activity_id[0], gpx)
-                # Save it
-                raw_gpx_file = open(output_file, 'w')
-                raw_gpx_file.write(gpx)
-                raw_gpx_file.close()
-    #            print('Saved activity_%d.gpx' % (activity_id[0]))
+    for activity in activities:
+        activity_id = activity["activityId"]
+        output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id)
+        # Only save and process if file not already saved from previous download
+        # As it processes newest activity first, stop when you get to one already downloaded
+        if os.path.isfile(output_file):
+            break
+        else:
+            # Download and process the gpx file
+            gpx = client.download_activity(activity_id, dl_fmt=client.ActivityDownloadFormat.GPX)
+            process_gpx('%d' % activity_id, gpx)
+            # Save it
+            with open(output_file, 'wb') as gpx_file:
+                gpx_file.write(gpx)
                 activities_saved += 1
-            activities_checked += 1
 
-    print('Activities checked: %d, Activities saved: %d' % (activities_checked, activities_saved))
+    print('Activities saved: %d' % activities_saved)
