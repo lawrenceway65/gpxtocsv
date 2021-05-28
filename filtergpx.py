@@ -376,10 +376,7 @@ if __name__ == "__main__":
         activity_id = activity["activityId"]
         output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id)
         # Only save and process if file not already saved from previous download
-        # As it processes newest activity first, stop when you get to one already downloaded
-        if os.path.isfile(output_file):
-            break
-        else:
+        if not os.path.isfile(output_file):
             # Download and process the gpx file
             gpx = client.download_activity(activity_id, dl_fmt=client.ActivityDownloadFormat.GPX)
             process_gpx('%d' % activity_id, gpx)
