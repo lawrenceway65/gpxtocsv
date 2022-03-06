@@ -242,6 +242,9 @@ class TrackData:
             else:
                 self._locality_string = start_locality + end_locality
 
+            # Remove problem characters
+            self._locality_string = self._locality_string.replace('/', '-')
+
         return self._locality_string
 
 
