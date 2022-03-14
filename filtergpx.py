@@ -245,7 +245,7 @@ class TrackData:
             # Remove problem characters
             self._locality_string = self._locality_string.replace('/', '-')
 
-        return self._locality_string
+        return self._locality_string.replace('/', '-')
 
 
 def get_activity_type(track):
@@ -367,13 +367,13 @@ if __name__ == "__main__":
     except (
             GarminConnectConnectionError,
             GarminConnectAuthenticationError,
-            GarminConnectTooManyRequestsError,
+            GarminConnectTooManyRequestsError
     ) as err:
         print("Error occurred during Garmin Connect Client init: %s" % err)
         quit()
     except Exception:  # pylint: disable=broad-except
         print("Unknown error occurred during Garmin Connect Client init")
-        quit()
+        # quit()
 
     for activity in activities:
         activity_id = activity["activityId"]

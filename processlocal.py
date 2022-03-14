@@ -12,7 +12,7 @@ import os
 if os.name == 'nt':
     path = "D:\\Documents\\GPSData\\Import\\Raw\\Other"
 else:
-    path = "/Users/lawrence/Documents/Python/"
+    path = "/Users/lawrence/Documents/GPSData/Import/Raw"
 
 # path = "D:\\Documents\\GPSData\\Import\\Raw\\Other"
 
