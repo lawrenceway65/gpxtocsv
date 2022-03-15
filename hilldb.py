@@ -8,9 +8,10 @@ import glob
 
 hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
 # gpx_file = "/Users/lawrence/Documents/GPSData/Activities/Hike/2022/Hike_2022-02-27_0907_13Mile_HighlandAlba-Scotland.gpx"
-path = "/Users/lawrence/Documents/GPSData/Activities/Hike/"
+path = "/Users/lawrence/Documents/GPSData/Activities/Hike/2020/"
 csv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Munros.csv"
 df = pandas.read_csv(hill_db_file)
+headers = df.columns
 
 def calculate_distance(lat1, long1, lat2, long2):
     """Wrapper for distance calculation
@@ -31,41 +32,54 @@ def analyse_track(gpx_file, csv_writer):
     #    print(list(df.columns))
     #    print(df['Latitude'].dtypes)
 
-        match_index = 0
+        hill_number = 0
 
         for track in input_gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
                     lat = point.latitude
-                    # Find lat in hill db data
-                    index = abs(df['Latitude'] - lat).idxmin()
-                    min_distance = calculate_distance(lat, point.longitude, df['Latitude'][index], df['Longitude'][index])
-                    if min_distance < 5:
-                        # Match
-                        if match_index != index:
-                            match_index = index
+                    # Filter hill data
+                    filtered_list = df[(df['Latitude'] > point.latitude - 0.0001) &
+                                       (df['Latitude'] < point.latitude + 0.0001) &
+                                       (df['Longitude'] > point.longitude - 0.0001) &
+                                       (df['Longitude'] < point.longitude + 0.0001)]
+
+                    # Should be only one match
+                    if len(filtered_list.index) == 1:
+                        if hill_number != filtered_list['Number'].item():
+                            hill_number = filtered_list['Number'].item()
                             # Check classification
                             is_munro = False
-                            if df['M'][index] == 1:
+                            if filtered_list['M'].item() == 1:
                                 is_munro = True
                                 type = "Munro"
-                            elif df['MT'][index] == 1:
+                            elif filtered_list['MT'].item() == 1:
                                 is_munro = True
                                 type = "Munro Top"
                             if is_munro:
-                                print("%s: %s. Height: %d. Time: %s" % (type, df['Name'][index], df['Metres'][index], point.time))
+                                print("%s: %s. Height: %d. Time: %s" % (type, filtered_list['Name'].item(), filtered_list['Metres'].item(), point.time))
                                 csv_writer.writerow({'Type': type,
-                                                 'Name': df['Name'][index],
-                                                 'Height': df['Metres'][index],
-                                                 'Region': df['Region'][index],
+                                                 'Name': filtered_list['Name'].item(),
+                                                 'Height': filtered_list['Metres'].item(),
+                                                 'Region': filtered_list['Region'].item(),
                                                  'Datetime': point.time,
                                                  'GPXFile': gpx_file})
+                    elif len(filtered_list.index) > 1:
+                        # Should not get here
+                        print("More than one match - should not be possible!")
 
 
 output_csv = open(csv_filename, 'w', newline='')
 fieldnames = ['Type', 'Name', 'Height', 'Region', 'Datetime', 'GPXFile']
 writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
 writer.writeheader()
+
+# rows = len(df.index)
+# print(df.shape)
+# df2 = df[(df['Number'] > 500) & (df['Number'] <1000)]
+# # rows = len(df2.index)
+# print(df2.shape)
+# print(df2.info)
 
 file_count = 0
 for filename in glob.iglob(path + '**/*.gpx', recursive=True):
