@@ -8,8 +8,10 @@ import glob
 
 hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
 # gpx_file = "/Users/lawrence/Documents/GPSData/Activities/Hike/2022/Hike_2022-02-27_0907_13Mile_HighlandAlba-Scotland.gpx"
-path = "/Users/lawrence/Documents/GPSData/Activities/Hike/2020/"
+path = "/Users/lawrence/Documents/GPSData/Activities/Hike/"
 csv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Munros.csv"
+gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
+
 df = pandas.read_csv(hill_db_file)
 headers = df.columns
 
@@ -37,12 +39,16 @@ def analyse_track(gpx_file, csv_writer):
         for track in input_gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
+                    # gpx_writer.writerow({'Lat': point.latitude,
+                    #                     'Long': point.longitude,
+                    #                     'Elev': point.elevation,
+                    #                     'Datetime': point.time})
                     lat = point.latitude
                     # Filter hill data
-                    filtered_list = df[(df['Latitude'] > point.latitude - 0.0001) &
-                                       (df['Latitude'] < point.latitude + 0.0001) &
-                                       (df['Longitude'] > point.longitude - 0.0001) &
-                                       (df['Longitude'] < point.longitude + 0.0001)]
+                    filtered_list = df[(df['Latitude'] > point.latitude - 0.0002) &
+                                       (df['Latitude'] < point.latitude + 0.0002) &
+                                       (df['Longitude'] > point.longitude - 0.0002) &
+                                       (df['Longitude'] < point.longitude + 0.0002)]
 
                     # Should be only one match
                     if len(filtered_list.index) == 1:
@@ -74,6 +80,12 @@ fieldnames = ['Type', 'Name', 'Height', 'Region', 'Datetime', 'GPXFile']
 writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
 writer.writeheader()
 
+# gpx_csv = open(gpxcsv_filename, 'w', newline='')
+# fieldnames = ['Lat', 'Long', 'Elev', 'Datetime']
+# gpxwriter = csv.DictWriter(gpx_csv, fieldnames=fieldnames)
+# gpxwriter.writeheader()
+
+
 # rows = len(df.index)
 # print(df.shape)
 # df2 = df[(df['Number'] > 500) & (df['Number'] <1000)]
@@ -88,5 +100,6 @@ for filename in glob.iglob(path + '**/*.gpx', recursive=True):
     analyse_track(filename, writer)
 
 output_csv.close()
+# gpx_csv.close()
 
 print("%d files analysed" % file_count)
