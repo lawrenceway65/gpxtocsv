@@ -7,7 +7,6 @@ import glob
 
 
 hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-# gpx_file = "/Users/lawrence/Documents/GPSData/Activities/Hike/2022/Hike_2022-02-27_0907_13Mile_HighlandAlba-Scotland.gpx"
 path = "/Users/lawrence/Documents/GPSData/Activities/Hike/"
 csv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Munros.csv"
 gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
@@ -31,19 +30,12 @@ def analyse_track(gpx_file, csv_writer):
         gpx_data = file.read()
         input_gpx = gpxpy.parse(gpx_data)
 
-    #    print(list(df.columns))
-    #    print(df['Latitude'].dtypes)
-
         hill_number = 0
+        distance_from_summit = 1000
 
         for track in input_gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
-                    # gpx_writer.writerow({'Lat': point.latitude,
-                    #                     'Long': point.longitude,
-                    #                     'Elev': point.elevation,
-                    #                     'Datetime': point.time})
-                    lat = point.latitude
                     # Filter hill data
                     filtered_list = df[(df['Latitude'] > point.latitude - 0.0002) &
                                        (df['Latitude'] < point.latitude + 0.0002) &
@@ -80,18 +72,6 @@ fieldnames = ['Type', 'Name', 'Height', 'Region', 'Datetime', 'GPXFile']
 writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
 writer.writeheader()
 
-# gpx_csv = open(gpxcsv_filename, 'w', newline='')
-# fieldnames = ['Lat', 'Long', 'Elev', 'Datetime']
-# gpxwriter = csv.DictWriter(gpx_csv, fieldnames=fieldnames)
-# gpxwriter.writeheader()
-
-
-# rows = len(df.index)
-# print(df.shape)
-# df2 = df[(df['Number'] > 500) & (df['Number'] <1000)]
-# # rows = len(df2.index)
-# print(df2.shape)
-# print(df2.info)
 
 file_count = 0
 for filename in glob.iglob(path + '**/*.gpx', recursive=True):
@@ -100,6 +80,5 @@ for filename in glob.iglob(path + '**/*.gpx', recursive=True):
     analyse_track(filename, writer)
 
 output_csv.close()
-# gpx_csv.close()
 
 print("%d files analysed" % file_count)
