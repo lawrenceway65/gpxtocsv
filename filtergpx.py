@@ -41,6 +41,8 @@ split_csv_format_string = '%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
 metadata_csv_name_format_string = '%sImport%sProcessGPX_%s.csv'
 metadata_csv_header = 'Date,Time,Activity,Garmin ID,Distance,Duration,Location\n'
+logfile_name_format_string = '%sImport%sProcessGPX.log'
+
 
 def get_output_path(activity='', year=''):
     """
@@ -49,7 +51,7 @@ def get_output_path(activity='', year=''):
     Just return root path if no params provided
     """
     if os.name == 'nt':
-        path = "D:\\Documents\\GPSData\\"
+        path = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\"
     else:
         path = "/Users/lawrence/Documents/GPSData/"
 
@@ -63,6 +65,24 @@ def get_output_path(activity='', year=''):
             os.mkdir(path)
 
     return path
+
+
+class State:
+
+    def __init__(self):
+        self.status = 'Not started'
+        self.logfile_name = logfile_name_format_string % (get_output_path(), os.sep)
+
+    def Update(self, status):
+        self.status = status
+        print(self.status)
+
+    def Write(self, status=''):
+        if status != '':
+            self.status = status
+        print(self.status)
+        with open(self.logfile_name, 'a') as logfile:
+            logfile.write('%s\t%s\n' % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), self.status))
 
 
 class MetadataCSV:
@@ -358,6 +378,7 @@ if __name__ == "__main__":
     # Don't necessarily want to download everything
     max_activities = config.max_activities
     activities_saved = 0
+    status = State()
 
     print("Download activities from Garmin Connect.")
     try:
@@ -369,11 +390,11 @@ if __name__ == "__main__":
             GarminConnectAuthenticationError,
             GarminConnectTooManyRequestsError
     ) as err:
-        print("Error occurred during Garmin Connect Client init: %s" % err)
+        status.Write("Error occurred during Garmin Connect Client init: %s" % err)
         quit()
     except Exception:  # pylint: disable=broad-except
-        print("Unknown error occurred during Garmin Connect Client init")
-        # quit()
+        status.Write("Unknown error occurred during Garmin Connect Client init")
+        quit()
 
     for activity in activities:
         activity_id = activity["activityId"]
@@ -388,4 +409,4 @@ if __name__ == "__main__":
                 gpx_file.write(gpx)
                 activities_saved += 1
 
-    print('Activities saved: %d' % activities_saved)
+    status.Write('Activities saved: %d' % activities_saved)
