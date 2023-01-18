@@ -39,7 +39,7 @@ MINPOINTSEPARATION = 5
 split_csv_header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 split_csv_format_string = '%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
-metadata_csv_name_format_string = '%sImport%sProcessGPX_%s.csv'
+metadata_csv_name_format_string = '%sImport%sProcessGPX.csv'
 metadata_csv_header = 'Date,Time,Activity,Garmin ID,Distance,Duration,Location\n'
 logfile_name_format_string = '%sImport%sProcessGPX.log'
 
@@ -51,7 +51,7 @@ def get_output_path(activity='', year=''):
     Just return root path if no params provided
     """
     if os.name == 'nt':
-        path = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\"
+        path = config.local_path
     else:
         path = "/Users/lawrence/Documents/GPSData/"
 
@@ -94,8 +94,7 @@ class MetadataCSV:
         self.lines_written = 0
         self.file = None
         self.metadata_csv_filename = metadata_csv_name_format_string % (get_output_path(),
-                                                                        os.sep,
-                                                                        datetime.now().strftime("%d-%m-%Y_%H%M"))
+                                                                        os.sep)
 
     def __enter__(self):
         """To allow use of 'with'."""
@@ -108,9 +107,13 @@ class MetadataCSV:
         :type activity_type: str
         :type track: TrackData
         """
-        if self.lines_written == 0:
-            self.file = io.open(self.metadata_csv_filename, 'w', encoding='utf-8')
+
+        if not os.path.isfile(self.metadata_csv_filename):
+            self.file = io.open(self.metadata_csv_filename, 'a', encoding='utf-8')
             self.file.write(metadata_csv_header)
+        elif self.lines_written == 0:
+            self.file = io.open(self.metadata_csv_filename, 'a', encoding='utf-8')
+
         s = ('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(track.start_point.time.timestamp())),
                                                              activity_type,
                                                              activity_id,
