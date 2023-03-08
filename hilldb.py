@@ -6,9 +6,11 @@ import os
 import glob
 
 
-hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-path = "/Users/lawrence/Documents/GPSData/Activities/Hike/"
-csv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Munros.csv"
+# hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
+subdir = "2022"
+hill_db_file = "D:\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
+path = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir
+csv_filename = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
 gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
 
 df = pandas.read_csv(hill_db_file)
@@ -59,6 +61,7 @@ def analyse_track(gpx_file, csv_writer):
                                 csv_writer.writerow({'Type': type,
                                                  'Name': filtered_list['Name'].item(),
                                                  'Height': filtered_list['Metres'].item(),
+                                                 'Grid Ref': filtered_list['GridrefXY'].item(),
                                                  'Region': filtered_list['Region'].item(),
                                                  'Datetime': point.time,
                                                  'GPXFile': gpx_file})
@@ -68,7 +71,7 @@ def analyse_track(gpx_file, csv_writer):
 
 
 output_csv = open(csv_filename, 'w', newline='')
-fieldnames = ['Type', 'Name', 'Height', 'Region', 'Datetime', 'GPXFile']
+fieldnames = ['Type', 'Name', 'Height', 'Grid Ref', 'Region', 'Datetime', 'GPXFile']
 writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
 writer.writeheader()
 
