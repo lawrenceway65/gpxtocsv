@@ -1,1 +1,2 @@
-max_activities = 50
+max_activities = 9
+local_path = 'C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\'
