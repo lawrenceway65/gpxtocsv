@@ -7,7 +7,7 @@ import glob
 
 
 # hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-subdir = "Manual"
+subdir = "2023"
 hill_db_file = "D:\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
 path = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir
 csv_filename = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
@@ -36,6 +36,31 @@ def analyse_track(gpx_file, csv_writer):
         min_summit_distance = 1000
         near_summit = False
 
+        # Check if any summits in areas of track
+        min_lat = 91.0
+        max_lat = 0.0
+        min_long = 91.0
+        max_long = 0.0
+
+        for track in input_gpx.tracks:
+            for segment in track.segments:
+                for point in segment.points:
+                    if point.latitude < min_lat:
+                        min_lat = point.latitude
+                    if point.latitude > max_lat:
+                        max_lat = point.latitude
+                    if point.longitude < min_long:
+                        min_long = point.longitude
+                    if point.longitude > max_long:
+                        max_long = point.longitude
+        filtered_list = df[(df['Latitude'] >= min_lat) &
+                           (df['Latitude'] <= max_lat) &
+                           (df['Longitude'] >= min_long) &
+                           (df['Longitude'] <= max_long)]
+        if len(filtered_list.index) == 0:
+            # No summits
+            return
+
         for track in input_gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
@@ -53,7 +78,7 @@ def analyse_track(gpx_file, csv_writer):
                                                              point.longitude,
                                                              filtered_list['Latitude'].item(),
                                                              filtered_list['Longitude'].item())
-                        print(summit_distance)
+#                        print(summit_distance)
                         if summit_distance < min_summit_distance:
                             min_summit_distance = summit_distance
                             nearest_point = point
