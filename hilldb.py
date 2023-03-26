@@ -7,11 +7,15 @@ import glob
 
 
 # hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-subdir = "2023"
-hill_db_file = "D:\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
-path = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir
-csv_filename = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
+subdir = "Manual"
+# hill_db_file = "D:\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
+# path = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir
+# csv_filename = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
 gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
+
+hill_db_file = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
+path = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\Activities\\Hike\\" + subdir
+csv_filename = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
 
 df = pandas.read_csv(hill_db_file)
 headers = df.columns
@@ -61,6 +65,8 @@ def analyse_track(gpx_file, csv_writer):
             # No summits
             return
 
+        summits = []
+
         for track in input_gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
@@ -73,38 +79,53 @@ def analyse_track(gpx_file, csv_writer):
 
                     # Should be at most one match
                     if len(filtered_list.index) == 1:
+                        hill_number = filtered_list['Name'].item()
                         near_summit = True
                         summit_distance = calculate_distance(point.latitude,
                                                              point.longitude,
                                                              filtered_list['Latitude'].item(),
                                                              filtered_list['Longitude'].item())
-#                        print(summit_distance)
                         if summit_distance < min_summit_distance:
                             min_summit_distance = summit_distance
                             nearest_point = point
                         elif summit_distance > 50:
-                            # We have moved away from summit - record details and reset
-                            is_munro = False
-                            if filtered_list['M'].item() == 1:
-                                is_munro = True
-                                type = "Munro"
-                            elif filtered_list['MT'].item() == 1:
-                                is_munro = True
-                                type = "Munro Top"
-                            if is_munro:
-                                print("%s: %s. Height: %d Time: %s Dist: %d" % (type,
-                                                                                filtered_list['Name'].item(),
-                                                                                filtered_list['Metres'].item(),
-                                                                                nearest_point.time,
-                                                                                min_summit_distance))
-                                csv_writer.writerow({'Type': type,
-                                                     'Name': filtered_list['Name'].item(),
-                                                     'Height': filtered_list['Metres'].item(),
-                                                     'Grid Ref': filtered_list['GridrefXY'].item(),
-                                                     'Region': filtered_list['Region'].item(),
-                                                     'Datetime': nearest_point.time,
-                                                     'GPXFile': gpx_file})
+                            # We have moved away from summit, so need to record
+                            # First check we haven't already been to this summit on this track
+                            dup = False
+                            for i in summits:
+                                if i == hill_number:
+                                    dup = True
+                                    print("Duplicate: %s: %s. Height: %d Time: %s Dist: %d" % (type,
+                                                                                    filtered_list['Name'].item(),
+                                                                                    filtered_list['Metres'].item(),
+                                                                                    nearest_point.time,
+                                                                                    min_summit_distance))
+                                    break
+                            if not dup:
+                                # It's a new summit so save details
+                                is_munro = False
+                                if filtered_list['M'].item() == 1:
+                                    is_munro = True
+                                    type = "Munro"
+                                elif filtered_list['MT'].item() == 1:
+                                    is_munro = True
+                                    type = "Munro Top"
+                                if is_munro:
+                                    print("%s: %s. Height: %d Time: %s Dist: %d" % (type,
+                                                                                    filtered_list['Name'].item(),
+                                                                                    filtered_list['Metres'].item(),
+                                                                                    nearest_point.time,
+                                                                                    min_summit_distance))
+                                    csv_writer.writerow({'Type': type,
+                                                         'Name': filtered_list['Name'].item(),
+                                                         'Height': filtered_list['Metres'].item(),
+                                                         'Grid Ref': filtered_list['GridrefXY'].item(),
+                                                         'Region': filtered_list['Region'].item(),
+                                                         'Datetime': nearest_point.time,
+                                                         'GPXFile': gpx_file})
 
+                            # Reset to find the next summit
+                            summits.append(hill_number)
                             min_summit_distance = 1000
                             near_summit = False
 
