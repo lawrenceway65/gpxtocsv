@@ -7,7 +7,7 @@ import glob
 
 
 # hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-subdir = "2022"
+subdir = "Manual"
 hill_db_file = "D:\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
 path = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir
 csv_filename = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
@@ -33,22 +33,32 @@ def analyse_track(gpx_file, csv_writer):
         input_gpx = gpxpy.parse(gpx_data)
 
         hill_number = 0
-        distance_from_summit = 1000
+        min_summit_distance = 1000
+        near_summit = False
 
         for track in input_gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
-                    # Filter hill data
-                    filtered_list = df[(df['Latitude'] > point.latitude - 0.0002) &
-                                       (df['Latitude'] < point.latitude + 0.0002) &
-                                       (df['Longitude'] > point.longitude - 0.0002) &
-                                       (df['Longitude'] < point.longitude + 0.0002)]
+                    if not near_summit:
+                        # Filter hill data
+                        filtered_list = df[(df['Latitude'] > point.latitude - 0.0003) &
+                                           (df['Latitude'] < point.latitude + 0.0003) &
+                                           (df['Longitude'] > point.longitude - 0.0003) &
+                                           (df['Longitude'] < point.longitude + 0.0003)]
 
-                    # Should be only one match
+                    # Should be at most one match
                     if len(filtered_list.index) == 1:
-                        if hill_number != filtered_list['Number'].item():
-                            hill_number = filtered_list['Number'].item()
-                            # Check classification
+                        near_summit = True
+                        summit_distance = calculate_distance(point.latitude,
+                                                             point.longitude,
+                                                             filtered_list['Latitude'].item(),
+                                                             filtered_list['Longitude'].item())
+                        print(summit_distance)
+                        if summit_distance < min_summit_distance:
+                            min_summit_distance = summit_distance
+                            nearest_point = point
+                        elif summit_distance > 50:
+                            # We have moved away from summit - record details and reset
                             is_munro = False
                             if filtered_list['M'].item() == 1:
                                 is_munro = True
@@ -57,14 +67,22 @@ def analyse_track(gpx_file, csv_writer):
                                 is_munro = True
                                 type = "Munro Top"
                             if is_munro:
-                                print("%s: %s. Height: %d. Time: %s" % (type, filtered_list['Name'].item(), filtered_list['Metres'].item(), point.time))
+                                print("%s: %s. Height: %d Time: %s Dist: %d" % (type,
+                                                                                filtered_list['Name'].item(),
+                                                                                filtered_list['Metres'].item(),
+                                                                                nearest_point.time,
+                                                                                min_summit_distance))
                                 csv_writer.writerow({'Type': type,
-                                                 'Name': filtered_list['Name'].item(),
-                                                 'Height': filtered_list['Metres'].item(),
-                                                 'Grid Ref': filtered_list['GridrefXY'].item(),
-                                                 'Region': filtered_list['Region'].item(),
-                                                 'Datetime': point.time,
-                                                 'GPXFile': gpx_file})
+                                                     'Name': filtered_list['Name'].item(),
+                                                     'Height': filtered_list['Metres'].item(),
+                                                     'Grid Ref': filtered_list['GridrefXY'].item(),
+                                                     'Region': filtered_list['Region'].item(),
+                                                     'Datetime': nearest_point.time,
+                                                     'GPXFile': gpx_file})
+
+                            min_summit_distance = 1000
+                            near_summit = False
+
                     elif len(filtered_list.index) > 1:
                         # Should not get here
                         print("More than one match - should not be possible!")
