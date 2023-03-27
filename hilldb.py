@@ -2,23 +2,46 @@ import csv
 import pandas
 import gpxpy
 from geopy.distance import distance
-import os
 import glob
+import config
 
 
 # hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-subdir = "Manual"
-# hill_db_file = "D:\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
-# path = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir
-# csv_filename = "D:\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
+subdir = "2023"
 gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
 
-hill_db_file = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\HillList\\DoBIH_v17_3.csv"
-path = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\Activities\\Hike\\" + subdir
-csv_filename = "C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
+hill_db_file = config.local_path + "HillList\\DoBIH_v17_3.csv"
+path = config.local_path + "Activities\\Hike\\" + subdir
+csv_filename = config.local_path + "Activities\\Hike\\" + subdir + "\\Munros_" + subdir + ".csv"
 
 df = pandas.read_csv(hill_db_file)
 headers = df.columns
+
+class Stats:
+    def __init__(self):
+        self.munros = 0
+        self.tops = 0
+        self.dups = 0
+        self.files = 0
+
+    def add_munro(self):
+        self.munros += 1
+
+    def add_top(self):
+        self.tops += 1
+
+    def add_dup(self):
+        self.dups += 1
+
+    def add_file(self):
+        self.files += 1
+
+    def output_total(self):
+        print("%d files analysed, %d Munros, %d Munro Tops, %d Duplicates" % (self.files,
+                                                                              self.munros,
+                                                                              self.tops,
+                                                                              self.dups))
+
 
 def calculate_distance(lat1, long1, lat2, long2):
     """Wrapper for distance calculation
@@ -30,7 +53,7 @@ def calculate_distance(lat1, long1, lat2, long2):
     return distance(coord1, coord2).meters
 
 
-def analyse_track(gpx_file, csv_writer):
+def analyse_track(gpx_file, csv_writer, stat_counter):
 
     with open(gpx_file, 'r') as file:
         gpx_data = file.read()
@@ -41,10 +64,10 @@ def analyse_track(gpx_file, csv_writer):
         near_summit = False
 
         # Check if any summits in areas of track
-        min_lat = 91.0
-        max_lat = 0.0
-        min_long = 91.0
-        max_long = 0.0
+        min_lat = 90.0
+        max_lat = -90.0
+        min_long = 180.0
+        max_long = -180.0
 
         for track in input_gpx.tracks:
             for segment in track.segments:
@@ -95,28 +118,30 @@ def analyse_track(gpx_file, csv_writer):
                             for i in summits:
                                 if i == hill_number:
                                     dup = True
-                                    print("Duplicate: %s: %s. Height: %d Time: %s Dist: %d" % (type,
+                                    print("Duplicate: %s: %s. Height: %d Time: %s Dist: %d" % (summit_type,
                                                                                     filtered_list['Name'].item(),
                                                                                     filtered_list['Metres'].item(),
                                                                                     nearest_point.time,
                                                                                     min_summit_distance))
+                                    stat_counter.add_dup()
                                     break
                             if not dup:
                                 # It's a new summit so save details
                                 is_munro = False
                                 if filtered_list['M'].item() == 1:
                                     is_munro = True
-                                    type = "Munro"
+                                    summit_type = "Munro"
+                                    stat_counter.add_munro()
                                 elif filtered_list['MT'].item() == 1:
                                     is_munro = True
-                                    type = "Munro Top"
+                                    summit_type = "Munro Top"
+                                    stat_counter.add_top()
                                 if is_munro:
-                                    print("%s: %s. Height: %d Time: %s Dist: %d" % (type,
-                                                                                    filtered_list['Name'].item(),
-                                                                                    filtered_list['Metres'].item(),
-                                                                                    nearest_point.time,
-                                                                                    min_summit_distance))
-                                    csv_writer.writerow({'Type': type,
+                                    print("%s: %s. Height: %d Dist: %d" % (summit_type,
+                                                                           filtered_list['Name'].item(),
+                                                                           filtered_list['Metres'].item(),
+                                                                           min_summit_distance))
+                                    csv_writer.writerow({'Type': summit_type,
                                                          'Name': filtered_list['Name'].item(),
                                                          'Height': filtered_list['Metres'].item(),
                                                          'Grid Ref': filtered_list['GridrefXY'].item(),
@@ -133,19 +158,21 @@ def analyse_track(gpx_file, csv_writer):
                         # Should not get here
                         print("More than one match - should not be possible!")
 
+    return
+
 
 output_csv = open(csv_filename, 'w', newline='')
 fieldnames = ['Type', 'Name', 'Height', 'Grid Ref', 'Region', 'Datetime', 'GPXFile']
 writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
 writer.writeheader()
 
+counter = Stats()
 
-file_count = 0
 for filename in glob.iglob(path + '**/*.gpx', recursive=True):
     print(filename)
-    file_count += 1
-    analyse_track(filename, writer)
+    counter.add_file()
+    analyse_track(filename, writer, counter)
 
 output_csv.close()
 
-print("%d files analysed" % file_count)
+counter.output_total()
