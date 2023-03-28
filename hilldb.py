@@ -23,27 +23,15 @@ class Stats:
     def __init__(self):
         self.munros = 0
         self.tops = 0
-        self.other = 0
+        self.others = 0
         self.dups = 0
         self.files = 0
-
-    def add_munro(self):
-        self.munros += 1
-
-    def add_top(self):
-        self.tops += 1
-
-    def add_dup(self):
-        self.dups += 1
-
-    def add_file(self):
-        self.files += 1
 
     def output_total(self):
         print("%d files analysed, %d Munros, %d Munro Tops, %d Other Tops, %d Duplicates" % (self.files,
                                                                                              self.munros,
                                                                                              self.tops,
-                                                                                             self.other,
+                                                                                             self.others,
                                                                                              self.dups))
 
 
@@ -127,7 +115,7 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                                     print("Duplicate: %s. Height: %s Dist: %d" % (filtered_list['Name'].item(),
                                                                                     filtered_list['Metres'].item(),
                                                                                     min_summit_distance))
-                                    stat_counter.add_dup()
+                                    stat_counter.dups += 1
                                     break
                             if not dup:
                                 # It's a new summit so save details
@@ -135,14 +123,14 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                                 if filtered_list['M'].item() == 1:
                                     is_munro = True
                                     summit_type = "Munro"
-                                    stat_counter.add_munro()
+                                    stat_counter.munros += 1
                                 elif filtered_list['MT'].item() == 1:
                                     is_munro = True
                                     summit_type = "Munro Top"
-                                    stat_counter.add_top()
+                                    stat_counter.tops += 1
                                 else:
                                     summit_type = "Other Top"
-                                    stat_counter.other += 1
+                                    stat_counter.others += 1
 
                                 print("%s: %s. Height: %d Dist: %d" % (summit_type,
                                                                        filtered_list['Name'].item(),
@@ -177,7 +165,7 @@ counter = Stats()
 
 for filename in glob.iglob(path + '**/*.gpx', recursive=True):
     print(filename)
-    counter.add_file()
+    counter.files += 1
     analyse_track(filename, writer, counter)
 
 output_csv.close()
