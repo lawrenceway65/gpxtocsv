@@ -7,7 +7,7 @@ import config
 
 
 # hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-subdir = "2018"
+subdir = "2023"
 gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
 # Approx 30m lat/lon
 margin = 0.0003
@@ -78,7 +78,6 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                            (df['Longitude'] <= max_long + margin)]
         if len(filtered_list.index) == 0:
             # No summits
-            print("Min Lat: %f Max Lat: %f Min long: %f Max Long: %f" % (min_lat, max_lat, min_long, max_long))
             return
 
         summits = []
@@ -101,7 +100,6 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                                                              point.longitude,
                                                              filtered_list['Latitude'].item(),
                                                              filtered_list['Longitude'].item())
-#                        print("Hill: %s Summit dist: %d" % (hill_number, summit_distance))
                         if summit_distance < min_summit_distance:
                             min_summit_distance = summit_distance
                             nearest_point = point
@@ -169,4 +167,5 @@ for filename in glob.iglob(path + '**/*.gpx', recursive=True):
     analyse_track(filename, writer, counter)
 
 output_csv.close()
+
 counter.output_total()
