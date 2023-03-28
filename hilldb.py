@@ -7,8 +7,10 @@ import config
 
 
 # hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-subdir = "2023"
+subdir = "2018"
 gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
+# Approx 30m lat/lon
+margin = 0.0003
 
 hill_db_file = config.local_path + "HillList\\DoBIH_v17_3.csv"
 path = config.local_path + "Activities\\Hike\\" + subdir
@@ -21,6 +23,7 @@ class Stats:
     def __init__(self):
         self.munros = 0
         self.tops = 0
+        self.other = 0
         self.dups = 0
         self.files = 0
 
@@ -37,10 +40,11 @@ class Stats:
         self.files += 1
 
     def output_total(self):
-        print("%d files analysed, %d Munros, %d Munro Tops, %d Duplicates" % (self.files,
-                                                                              self.munros,
-                                                                              self.tops,
-                                                                              self.dups))
+        print("%d files analysed, %d Munros, %d Munro Tops, %d Other Tops, %d Duplicates" % (self.files,
+                                                                                             self.munros,
+                                                                                             self.tops,
+                                                                                             self.other,
+                                                                                             self.dups))
 
 
 def calculate_distance(lat1, long1, lat2, long2):
@@ -80,12 +84,13 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                         min_long = point.longitude
                     if point.longitude > max_long:
                         max_long = point.longitude
-        filtered_list = df[(df['Latitude'] >= min_lat) &
-                           (df['Latitude'] <= max_lat) &
-                           (df['Longitude'] >= min_long) &
-                           (df['Longitude'] <= max_long)]
+        filtered_list = df[(df['Latitude'] >= min_lat - margin) &
+                           (df['Latitude'] <= max_lat + margin) &
+                           (df['Longitude'] >= min_long - margin) &
+                           (df['Longitude'] <= max_long + margin)]
         if len(filtered_list.index) == 0:
             # No summits
+            print("Min Lat: %f Max Lat: %f Min long: %f Max Long: %f" % (min_lat, max_lat, min_long, max_long))
             return
 
         summits = []
@@ -95,10 +100,10 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                 for point in segment.points:
                     if not near_summit:
                         # Filter hill data
-                        filtered_list = df[(df['Latitude'] > point.latitude - 0.0003) &
-                                           (df['Latitude'] < point.latitude + 0.0003) &
-                                           (df['Longitude'] > point.longitude - 0.0003) &
-                                           (df['Longitude'] < point.longitude + 0.0003)]
+                        filtered_list = df[(df['Latitude'] > point.latitude - margin) &
+                                           (df['Latitude'] < point.latitude + margin) &
+                                           (df['Longitude'] > point.longitude - margin) &
+                                           (df['Longitude'] < point.longitude + margin)]
 
                     # Should be at most one match
                     if len(filtered_list.index) == 1:
@@ -108,6 +113,7 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                                                              point.longitude,
                                                              filtered_list['Latitude'].item(),
                                                              filtered_list['Longitude'].item())
+#                        print("Hill: %s Summit dist: %d" % (hill_number, summit_distance))
                         if summit_distance < min_summit_distance:
                             min_summit_distance = summit_distance
                             nearest_point = point
@@ -118,10 +124,8 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                             for i in summits:
                                 if i == hill_number:
                                     dup = True
-                                    print("Duplicate: %s: %s. Height: %d Time: %s Dist: %d" % (summit_type,
-                                                                                    filtered_list['Name'].item(),
+                                    print("Duplicate: %s. Height: %s Dist: %d" % (filtered_list['Name'].item(),
                                                                                     filtered_list['Metres'].item(),
-                                                                                    nearest_point.time,
                                                                                     min_summit_distance))
                                     stat_counter.add_dup()
                                     break
@@ -136,18 +140,21 @@ def analyse_track(gpx_file, csv_writer, stat_counter):
                                     is_munro = True
                                     summit_type = "Munro Top"
                                     stat_counter.add_top()
-                                if is_munro:
-                                    print("%s: %s. Height: %d Dist: %d" % (summit_type,
-                                                                           filtered_list['Name'].item(),
-                                                                           filtered_list['Metres'].item(),
-                                                                           min_summit_distance))
-                                    csv_writer.writerow({'Type': summit_type,
-                                                         'Name': filtered_list['Name'].item(),
-                                                         'Height': filtered_list['Metres'].item(),
-                                                         'Grid Ref': filtered_list['GridrefXY'].item(),
-                                                         'Region': filtered_list['Region'].item(),
-                                                         'Datetime': nearest_point.time,
-                                                         'GPXFile': gpx_file})
+                                else:
+                                    summit_type = "Other Top"
+                                    stat_counter.other += 1
+
+                                print("%s: %s. Height: %d Dist: %d" % (summit_type,
+                                                                       filtered_list['Name'].item(),
+                                                                       filtered_list['Metres'].item(),
+                                                                       min_summit_distance))
+                                csv_writer.writerow({'Type': summit_type,
+                                                     'Name': filtered_list['Name'].item(),
+                                                     'Height': filtered_list['Metres'].item(),
+                                                     'Grid Ref': filtered_list['GridrefXY'].item(),
+                                                     'Region': filtered_list['Region'].item(),
+                                                     'Datetime': nearest_point.time,
+                                                     'GPXFile': gpx_file})
 
                             # Reset to find the next summit
                             summits.append(hill_number)
@@ -174,5 +181,4 @@ for filename in glob.iglob(path + '**/*.gpx', recursive=True):
     analyse_track(filename, writer, counter)
 
 output_csv.close()
-
 counter.output_total()
