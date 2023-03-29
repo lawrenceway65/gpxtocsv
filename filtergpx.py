@@ -17,6 +17,7 @@ import time
 import os
 import subprocess
 import json
+import requests
 import re
 import io
 import garmincredential
@@ -305,11 +306,13 @@ def get_locality(latitude, longitude):
     """
     osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=16&format=json"
     #   print(OSMRequest % (Latitude, Longitude))
-    result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)]).decode("utf-8")
-    result_json = json.loads(result)
+    # result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)]).decode("utf-8")
+    # result_json = json.loads(result)
+
+    result = requests.get(osm_request % (latitude, longitude))
 
     # Extract second item from 'display_name'
-    return re.split(',', result_json['display_name'])[1]
+    return re.split(',', result.json()['display_name'])[1]
 
 
 def process_gpx(activity_id, gpx_xml):
