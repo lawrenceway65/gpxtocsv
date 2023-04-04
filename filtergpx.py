@@ -306,7 +306,6 @@ def get_locality(latitude, longitude):
     """
     osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=16&format=json"
     result = requests.get(osm_request % (latitude, longitude))
-    print(result)
     # Extract second item from 'display_name'
     # Need to handle case where no locality - eg at sea
     try:
