@@ -306,9 +306,16 @@ def get_locality(latitude, longitude):
     """
     osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=16&format=json"
     result = requests.get(osm_request % (latitude, longitude))
-
+    print(result)
     # Extract second item from 'display_name'
-    return re.split(',', result.json()['display_name'])[1]
+    # Need to handle case where no locality - eg at sea
+    try:
+        location = re.split(',', result.json()['display_name'])[1]
+    except IndexError:
+        location = ""
+    except KeyError:
+        location = ""
+    return location
 
 
 def process_gpx(activity_id, gpx_xml):
