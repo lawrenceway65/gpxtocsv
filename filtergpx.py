@@ -40,6 +40,9 @@ MINPOINTSEPARATION = 5
 split_csv_header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distance,Pace,Pace(m:s)\n'
 split_csv_format_string = '%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
+gpx_csv_header = 'Date,Time,Incr Time,Incr Distance,Total Distance,Speed(m/s)\n'
+gpx_csv_format_string = '%s,%d,%.0f,%.0f,%.1f\n'
+
 metadata_csv_name_format_string = '%sImport%sProcessGPX.csv'
 metadata_csv_header = 'Date,Time,Activity,Garmin ID,Distance,Duration,Location\n'
 logfile_name_format_string = '%sImport%sProcessGPX.log'
@@ -147,6 +150,7 @@ class GPXData:
         """Set up GPX"""
         self.separation = 0
         self.points_written = 0
+        self.stopped_seconds = 0
 
         self.gpx = gpxpy.gpx.GPX()
         # Create track
@@ -226,6 +230,39 @@ class Splits:
         with open(filename + '.csv', 'w') as file:
             file.write(self.csv_data)
 
+
+class GPXcsv:
+    """Manages csv output of gpx data
+    Initialised with first point, called for each point outputs csv data.
+    """
+    def __init__(self, point):
+        """"""
+        self.prev_point = point
+        self.total_distance = 0
+        self.csv_data = gpx_csv_header
+
+    def __del__(self):
+        """Nothing required."""
+        pass
+
+    def process_point(self, point, incremental_distance):
+        """Increment distance, if complete split, write csv data and reset for next split"""
+        self.total_distance += incremental_distance
+        incremental_time = point.time - self.prev_point.time
+        # Pace output as decimal minutes and MM:SS
+        self.csv_data += gpx_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
+                                                    incremental_time.seconds,
+                                                    incremental_distance,
+                                                    self.total_distance,
+                                                    incremental_distance / incremental_time.seconds)
+        self.prev_point = point
+
+        return
+
+    def write(self, filename):
+        """Write to file"""
+        with open(filename + '.csv', 'w') as file:
+            file.write(self.csv_data)
 
 class TrackData:
     def __init__(self, point):
@@ -349,6 +386,7 @@ def process_gpx(activity_id, gpx_xml):
                 if point_count > 1:
                     # Distance from last point
                     incremental_distance = calculate_distance(previous_point, point)
+                    # print(str(incremental_distance) + ", " + time.strftime('%H:%M:%S', time.localtime(point.time.timestamp())))
                     total_distance += incremental_distance
                     # Manage split
                     split_tracker.process_point(point, incremental_distance, total_distance)
@@ -356,10 +394,13 @@ def process_gpx(activity_id, gpx_xml):
                     output_gpx.process_point(point, incremental_distance)
                     # Manage data
                     track_data.process_point(point, incremental_distance)
+                    # csv output
+                    gpx_csv_data.process_point(point, incremental_distance)
                 else:
                     # First time, set things up
                     split_tracker = Splits(point)
                     track_data = TrackData(point)
+                    gpx_csv_data = GPXcsv(point)
 
                 previous_point = point
 
@@ -372,8 +413,10 @@ def process_gpx(activity_id, gpx_xml):
                                                  (track_data.track_distance / MILE),
                                                  track_data.get_locality_string())
 
-        if activity_type == 'Run' or activity_type == 'Cycle':
-            split_tracker.write(output_filename)
+        if activity_type == 'Run':
+            split_tracker.write(output_filename + '_split')
+        elif activity_type == 'Cycle':
+            gpx_csv_data.write(output_filename + '_points')
         output_gpx.write(output_filename)
         # Write metadata to csv
         metadata_csv.write(activity_id, activity_type, track_data)
