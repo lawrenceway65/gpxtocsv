@@ -41,7 +41,7 @@ split_csv_header = 'Date,Time,Split Time,Split Distance,Total Time,Total Distanc
 split_csv_format_string = '%s,%s,%.0f,%s,%.0f,%.2f,%02d:%02d\n'
 
 gpx_csv_header = 'Date,Time,Incr Time,Incr Distance,Total Distance,Speed(m/s)\n'
-gpx_csv_format_string = '%s,%d,%f,%f,%f\n'
+gpx_csv_format_string = '%s,%f,%f,%f,%f\n'
 
 metadata_csv_name_format_string = '%sImport%sProcessGPX.csv'
 metadata_csv_header = 'Date,Time,Activity,Garmin ID,Distance,Duration,Location\n'
