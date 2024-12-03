@@ -57,12 +57,12 @@ def get_output_path(activity='', year=''):
     if os.name == 'nt':
         path = config.local_path
     else:
-        path = "/Users/lawrence/Documents/GPSData/"
+        path = "/Users/lawre/OneDrive/Documents/GPSData/"
 
     if activity != '':
         # Just create these if they don't exist
-        if not os.path.isdir(path + 'Activities/' + activity):
-            os.mkdir(path + 'Activities/' + activity)
+        if not os.path.isdir(path + 'Activities' + os.sep + activity):
+            os.mkdir(path + 'Activities' + os.sep + activity)
 
         path += 'Activities' + os.sep + activity + os.sep + year + os.sep
         if not os.path.isdir(path):
