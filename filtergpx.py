@@ -199,6 +199,7 @@ class Splits:
         self.start_point = point
         self.split_distance = 0
         self.csv_data = split_csv_header
+        self.track_start_time = point.time
 
     def __del__(self):
         """Nothing required."""
@@ -214,7 +215,7 @@ class Splits:
             self.csv_data += split_csv_format_string % (time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(point.time.timestamp())),
                                                         split_time,
                                                         self.split_distance,
-                                                        point.time - self.start_point.time,
+                                                        point.time - self.track_start_time,
                                                         total_distance,
                                                         pace,
                                                         int(pace),
