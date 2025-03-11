@@ -1,2 +1,2 @@
-max_activities = 9
-local_path = 'C:\\Users\\lawre\\OneDrive\\Documents\\GPSData\\'
+max_activities = 10
+local_path = "D:\\Documents\\GPSData\\"
