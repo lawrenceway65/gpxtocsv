@@ -28,6 +28,8 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
     GarminConnectAuthenticationError,
 )
+from fit2gpx import Converter
+import zipfile
 
 
 # Constants and definitions
@@ -453,15 +455,26 @@ if __name__ == "__main__":
 
     for activity in activities:
         activity_id = activity["activityId"]
-        output_file = '%s/Import/Raw/activity_%d.gpx' % (get_output_path(), activity_id)
+        output_zip = '%sImport\\Raw\\activity.zip' % config.local_path
+        output_fit = '%sImport\\Raw\\%d_ACTIVITY.fit' % (config.local_path, activity_id)
+        output_gpx = '%sImport\\Raw\\activity.gpx' % config.local_path
         # Only save and process if file not already saved from previous download
-        if not os.path.isfile(output_file):
-            # Download and process the gpx file
-            gpx = client.download_activity(activity_id, dl_fmt=client.ActivityDownloadFormat.GPX)
-            process_gpx('%d' % activity_id, gpx)
+        if not os.path.isfile(output_fit):
+            # Download the Garmin FIT file
+            fit_data = client.download_activity(activity_id, dl_fmt=client.ActivityDownloadFormat.ORIGINAL)
             # Save it
-            with open(output_file, 'wb') as gpx_file:
-                gpx_file.write(gpx)
-                activities_saved += 1
+            with open(output_zip, 'wb') as zip_file:
+                zip_file.write(fit_data)
+            # Extract fit data
+            with zipfile.ZipFile(output_zip, 'r') as zip_ref:
+                zip_ref.extract('%d_ACTIVITY.fit' % activity_id, 'D:\\Documents\\GPSData\\Import\\Raw')
+            # Convert to gpx
+            conv.fit_to_gpx(f_in=output_fit, f_out=output_gpx)
+            with open(output_gpx, 'r') as gpx_file:
+                process_gpx('%d' % activity_id, gpx_file)
+            activities_saved += 1
+            # Clean up
+            os.remove(output_zip)
+            os.remove(output_gpx)
 
     status.Write('Activities saved: %d' % activities_saved)
