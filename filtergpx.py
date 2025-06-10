@@ -345,12 +345,8 @@ def get_locality(latitude, longitude):
     Using street level (zoom = 16) and picking second item, gives more accurate result
     """
     osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=16&format=json"
-    result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)]).decode("utf-8")
+    result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)], creationflags=subprocess.CREATE_NO_WINDOW).decode("utf-8")
     result_json = json.loads(result)
-#    result = requests.get(osm_request % (latitude, longitude))
-    # Extract second item from 'display_name'
-    # Need to handle case where no locality - eg at sea
-#    print(result_json)
     try:
         location = re.split(',', result_json['display_name'])[1]
     except IndexError:
