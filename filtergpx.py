@@ -114,11 +114,12 @@ class MetadataCSV:
         :type track: TrackData
         """
 
+        write_header = False
         if not os.path.isfile(self.metadata_csv_filename):
-            self.file = io.open(self.metadata_csv_filename, 'a', encoding='utf-8')
+            write_header = True
+        self.file = io.open(self.metadata_csv_filename, 'a', encoding='utf-8')
+        if write_header:
             self.file.write(metadata_csv_header)
-        elif self.lines_written == 0:
-            self.file = io.open(self.metadata_csv_filename, 'a', encoding='utf-8')
 
         s = ('%s,%s,activity_%s,%d,%s,%s\n' % (time.strftime('%Y-%m-%d, %H:%M', time.localtime(track.start_point.time.timestamp())),
                                                              activity_type,
@@ -128,6 +129,7 @@ class MetadataCSV:
                                                              track.get_locality_string()))
         self.file.write(s)
         self.lines_written += 1
+        self.file.close()
 
         return
 
@@ -137,8 +139,8 @@ class MetadataCSV:
 
     def __del__(self):
         """File will only need closing if lines have been written."""
-        if self.lines_written > 0:
-            self.file.close()
+#        if self.lines_written > 0:
+#            self.file.close()
 
 
 def get_pace(time, distance):
@@ -346,7 +348,9 @@ def get_locality(latitude, longitude):
     """
     osm_request = "https://nominatim.openstreetmap.org/reverse?lat=%f&lon=%f&zoom=16&format=json"
     result = subprocess.check_output(['curl', '-s', osm_request % (latitude, longitude)], creationflags=subprocess.CREATE_NO_WINDOW).decode("utf-8")
+#    print(result)
     result_json = json.loads(result)
+
     try:
         location = re.split(',', result_json['display_name'])[1]
     except IndexError:

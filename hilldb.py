@@ -7,7 +7,7 @@ import config
 
 
 # hill_db_file = "/Users/lawrence/Downloads/DoBIH_v17_3.csv"
-subdir = "2023"
+subdir = "2026"
 gpxcsv_filename = "/Users/lawrence/Documents/GPSData/Activities/Hike/Test/gpx.csv"
 # Approx 30m lat/lon
 margin = 0.0003
